@@ -1,0 +1,31 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:vm="using:GateKeeper.Desktop.ViewModels"
+        x:Class="GateKeeper.Desktop.Views.MainWindow"
+        x:DataType="vm:MainViewModel"
+        Title="GateKeeper (M0 spike)"
+        Width="720" Height="460">
+  <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="16" RowSpacing="12">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
+      <TextBlock Grid.Column="0" Text="Zones" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+      <ToggleSwitch Grid.Column="1" x:Name="NoSignalSwitch" OnContent="No signal" OffContent="Signal"
+                    IsChecked="{Binding SimulateNoSignal}" />
+      <Button Grid.Column="2" x:Name="SyncButton" Content="Sync" Command="{Binding SyncCommand}" VerticalAlignment="Center" />
+    </Grid>
+    <ListBox Grid.Row="1" x:Name="ZoneList" ItemsSource="{Binding Zones}" SelectedItem="{Binding SelectedZone}">
+      <ListBox.ItemTemplate>
+        <DataTemplate x:DataType="vm:ZoneRow">
+          <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
+        </DataTemplate>
+      </ListBox.ItemTemplate>
+    </ListBox>
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="12">
+      <TextBox Grid.Column="0" x:Name="NotesBox" PlaceholderText="Gate notes for the selected zone" Text="{Binding NotesDraft}" />
+      <Button Grid.Column="1" x:Name="SaveButton" Content="Save locally" Command="{Binding SaveCommand}" />
+    </Grid>
+    <StackPanel Grid.Row="3" Spacing="4">
+      <TextBlock x:Name="StatusText" Text="{Binding Status}" TextWrapping="Wrap" />
+      <TextBlock x:Name="PendingText" Text="{Binding PendingChanges, StringFormat='Changes waiting to sync: {0}'}" Opacity="0.7" />
+    </StackPanel>
+  </Grid>
+</Window>
