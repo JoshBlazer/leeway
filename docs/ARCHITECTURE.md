@@ -1,6 +1,6 @@
 # Architecture (draft)
 
-Draft after M0. The data flow below assumes **ADR-0012, which is proposed and not yet accepted.**
+Draft after M0. The data flow below follows ADR-0012, which is accepted but not yet built.
 
 ```
  ┌──────── Avalonia / MAUI app ────────┐          ┌────────── ASP.NET Core server ──────────┐
@@ -26,7 +26,7 @@ Draft after M0. The data flow below assumes **ADR-0012, which is proposed and no
 | `samples/GateKeeper.Server`, `.Desktop` | M0 spike: one entity, default resolver | Working |
 | `samples/GateKeeper.Dashboard` | Dashboard | Not created, due in M6 |
 
-## Proposed data flow (ADR-0012)
+## Data flow (ADR-0012, not yet built)
 
 **Local write.** One SQLite transaction, with no network:
 record the op in a local log, update the wallet if escrowed, and advance the HLC. The UI shows `pulled row + unacknowledged ops`.

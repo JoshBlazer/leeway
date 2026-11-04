@@ -1,6 +1,6 @@
 # Decision records
 
-Status is **Accepted** or **Proposed** (awaiting maintainer review, because it changes something in the project brief).
+Status is **Accepted** or **Proposed** (awaiting maintainer review).
 
 ## ADR-0001: Target .NET 10
 
@@ -45,7 +45,7 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review, because it c
 **Caveats:**
 - IDs are free, not reserved. The NuGet profile `Leeway` owns `LeewayUtils` and `DintinctTool`, and an unrelated `LeeWay.Ensure.ControllerAttributes` shares the prefix, so reserving the `Leeway.` prefix may not be possible. Publishing early placeholders is the only sure claim.
 - `github.com/leeway` is a dormant, unrelated user account with no public repos. A repository named `leeway` under a personal account or a new organization is available. `leeway-dotnet` and `leewaydotnet` were free as organization names.
-**Decision:** Package IDs as in the brief. `Leeway.Datasync` stays reserved for a possible metapackage at M6. `Leeway.Simulation` is not packable for now.
+**Decision:** Package IDs as in the brief. The repository is `JoshBlazer/leeway`. `Leeway.Datasync` stays reserved for a possible metapackage at M6. `Leeway.Simulation` is not packable for now.
 
 ## ADR-0008: Pin transitive packages with security advisories
 
@@ -87,15 +87,15 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review, because it c
 
 **Build telemetry disclosure:** Avalonia brings `Avalonia.BuildServices`, which sends anonymous build-time data (hashed project and machine names, versions, OS). Nothing runs in deployed apps, and it affects only those building the samples. CI opts out with `AVALONIA_TELEMETRY_OPTOUT=1`, and contributors can set the same variable.
 
-## ADR-0012: Carry intent in an append-only operation table, and merge on the server (Proposed)
+## ADR-0012: Carry intent in an append-only operation table, and merge on the server
 
-**Status:** **Proposed: needs maintainer review before M3.** It changes an emphasis in the brief.
+**Status:** Accepted by the maintainer, 2026-11-04. It changes an emphasis in the brief.
 **Context:** Brief §5 describes a client-side "field-semantic conflict resolver". M0 found this cannot be sufficient by itself:
 - A resolver's merged write is unconditional, so a concurrent update is silently lost (C09, C10). For a counter or escrow balance, this is precisely the failure Leeway exists to prevent.
 - A resolver sees only two row states. A PN-counter or OR-set needs operations or per-device state, and compaction removes them (C07).
 - Retries are inherent (C12, C13, C24, C25), and whole-row replace is not idempotent. Under Datasync's default, a poor signal alone can strand a device in a conflict with itself (C25).
 
-**Proposal:**
+**Decision:**
 1. A write records an **operation** with a client-generated UUID in an append-only Datasync table (C14). A retry is a 409, which `ServerWins` turns into "already applied".
 2. The server applies each operation **in one transaction** in a custom repository: dedupe, merge into the entity's per-field state, enforce invariants, stamp. Hooks are not transactional (S05).
 3. Entity rows are read-only projections from the client's point of view. They are pulled, and never written through the queue, so they cannot conflict or block pulls (C06). The client overlays its unacknowledged ops (C17).
@@ -105,9 +105,9 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review, because it c
 **Alternatives:** A resolver alone is unsafe as above. Controller-level merge of whole rows (S04) cannot recover intent. A custom endpoint breaks the "no custom transport" non-goal.
 **Costs:** Op table growth, plus two tables per concept. Apps can no longer simply edit an entity and call `SaveChanges`: the generated API must make that feel natural.
 
-## ADR-0013: Server stamps strictly increasing UpdatedAt (Proposed)
+## ADR-0013: Server stamps strictly increasing UpdatedAt
 
-**Status:** **Proposed**, goes with ADR-0012.
+**Status:** Accepted by the maintainer, 2026-11-04. Goes with ADR-0012.
 **Context:** The pull filter is `updatedAt gt <token>` at millisecond resolution, so a later commit in the token's millisecond is never delivered (C19). That breaks simulator property 2 (convergence) with no error anywhere.
-**Proposal:** Leeway's server repository stamps `max(now, lastStamp + 1ms)` inside the write transaction. SQLite's single writer makes this sufficient.
+**Decision:** Leeway's server repository stamps `max(now, lastStamp + 1ms)` inside the write transaction. SQLite's single writer makes this sufficient.
 **Honest limit:** This relies on commit order matching stamp order. A server database with concurrent writers needs more care, and that is another reason ADR-0003 limits what is verified.

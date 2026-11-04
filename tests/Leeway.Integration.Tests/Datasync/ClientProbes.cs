@@ -354,7 +354,7 @@ public class ClientProbes
         Assert.Equal(412, Assert.Single(retry.FailedRequests).Value.StatusCode);
     }
 
-    /// <summary>The design proposed in ADR-0012: append-only rows with client-assigned IDs make retries harmless.</summary>
+    /// <summary>The design chosen in ADR-0012: append-only rows with client-assigned IDs make retries harmless.</summary>
     [Fact]
     public async Task C14_an_append_only_table_with_client_ids_plus_server_wins_is_idempotent_over_datasync()
     {

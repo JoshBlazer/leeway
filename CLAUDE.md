@@ -11,7 +11,8 @@ Start each session by reading `docs/PROGRESS.md`, this file, and the current mil
 - **Hard constraints:** zero cost (check licences, see ADR-0009); extend, do not fork, Datasync; SQLite only in samples and tests; MIT.
 - Core logic stays pure and fully tested before integration. `Leeway.Core` has no Datasync dependency.
 - Small conventional commits. Append to `docs/PROGRESS.md` at the end of each session. Stop at the end of each milestone and wait for review.
-- Filing upstream issues, pushing, and publishing packages need the maintainer's approval.
+- **Git identity:** commit and push only as `Joshua Willie <joshblazerwillie@gmail.com>` (GitHub: `JoshBlazer`). Add no `Co-Authored-By` trailers or tool attribution in commits or PRs unless the maintainer explicitly asks. The README's AI-assistance disclosure stays.
+- Publishing packages needs the maintainer's approval.
 
 ## Commands
 

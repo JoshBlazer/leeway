@@ -26,7 +26,7 @@ carrier for per-field merging and a good carrier for an **append-only operation 
 | 5 | **A row sharing the delta token's millisecond is never pulled** (C19) | Silent convergence failure. The server must stamp strictly increasing `UpdatedAt` |
 | 6 | **The sync lock is process-wide**: queued local writes block during any push (C23) | An offline spend must not wait on the network, so it cannot go through a queued write |
 
-Together these support the design proposed in [ADR-0012](../DECISIONS.md#adr-0012-carry-intent-in-an-append-only-operation-table-and-merge-on-the-server-proposed).
+These findings led to the design in [ADR-0012](../DECISIONS.md#adr-0012-carry-intent-in-an-append-only-operation-table-and-merge-on-the-server).
 
 ## Client extension points
 

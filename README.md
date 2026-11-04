@@ -42,7 +42,7 @@ explained in the [integration map](docs/design/datasync-integration.md).
 - **A poor signal alone can leave one device in a conflict with itself**, when the server applied a write but the response never arrived (C12, C25).
 - **A row sharing the sync token's millisecond is never pulled** (C19).
 
-As a result, [ADR-0012](docs/DECISIONS.md) proposes an append-only operation log with merging done on the server, rather than a client conflict resolver alone.
+As a result, [ADR-0012](docs/DECISIONS.md) chooses an append-only operation log with merging done on the server, rather than a client conflict resolver alone.
 
 ## Honest limits
 
@@ -68,7 +68,7 @@ What Leeway cannot guarantee is as important as what it can. These apply to the 
 ## AI-assistance disclosure
 
 This project is built with substantial AI assistance. Claude (Anthropic), through Claude Code, wrote the code, tests, and documentation so far under a maintainer's brief.
-Claims here are meant to be checked: each comes with a command to run. Commits with AI involvement carry a `Co-Authored-By` trailer.
+Claims here are meant to be checked: each comes with a command to run. Commits are authored by the maintainer, who is responsible for them, so this notice rather than commit metadata is the record of AI involvement.
 
 ## License
 

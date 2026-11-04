@@ -35,7 +35,7 @@ Leeway extends Datasync with:
 
 No general-purpose CRDT database, no collaborative text editing, no custom transport, and no MAUI until the Avalonia demo is done.
 
-## Developer experience (sketch, subject to ADR-0012)
+## Developer experience (sketch, to be refined under ADR-0012)
 
 ```csharp
 public partial class Zone : OfflineEntity
