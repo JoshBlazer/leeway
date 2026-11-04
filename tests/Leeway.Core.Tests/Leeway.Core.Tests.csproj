@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Leeway.Core\Leeway.Core.csproj" />
+  </ItemGroup>
+</Project>

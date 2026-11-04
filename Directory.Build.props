@@ -1,0 +1,13 @@
+<Project>
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Authors>Leeway contributors</Authors>
+    <Copyright>Copyright (c) 2026 Leeway contributors</Copyright>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <Description>Business rules that hold, even without signal.</Description>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+</Project>

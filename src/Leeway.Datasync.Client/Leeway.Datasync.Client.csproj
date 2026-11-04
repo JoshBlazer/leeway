@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Leeway.Datasync.Client</PackageId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Datasync.Client" />
+    <ProjectReference Include="..\Leeway.Core\Leeway.Core.csproj" />
+  </ItemGroup>
+</Project>

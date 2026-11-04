@@ -1,0 +1,23 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/GateKeeper.Desktop/GateKeeper.Desktop.csproj" />
+    <Project Path="samples/GateKeeper.Server/GateKeeper.Server.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/Leeway.Analyzers/Leeway.Analyzers.csproj" />
+    <Project Path="src/Leeway.Core/Leeway.Core.csproj" />
+    <Project Path="src/Leeway.Datasync.Client/Leeway.Datasync.Client.csproj" />
+    <Project Path="src/Leeway.Datasync.Server/Leeway.Datasync.Server.csproj" />
+    <Project Path="src/Leeway.Generators/Leeway.Generators.csproj" />
+    <Project Path="src/Leeway.Simulation/Leeway.Simulation.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/GateKeeper.Desktop.Tests/GateKeeper.Desktop.Tests.csproj" />
+    <Project Path="tests/Leeway.Analyzers.Tests/Leeway.Analyzers.Tests.csproj" />
+    <Project Path="tests/Leeway.Core.Tests/Leeway.Core.Tests.csproj" />
+    <Project Path="tests/Leeway.Generators.Tests/Leeway.Generators.Tests.csproj" />
+    <Project Path="tests/Leeway.Integration.Tests/Leeway.Integration.Tests.csproj" />
+    <Project Path="tests/Leeway.Property.Tests/Leeway.Property.Tests.csproj" />
+    <Project Path="tests/Leeway.Simulation.Tests/Leeway.Simulation.Tests.csproj" />
+  </Folder>
+</Solution>

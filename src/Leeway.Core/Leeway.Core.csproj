@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>Leeway.Core</PackageId>
+  </PropertyGroup>
+</Project>

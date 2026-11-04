@@ -1,0 +1,5 @@
+* text=auto
+*.png binary
+# Verify compares snapshots byte for byte, so line endings must not vary by platform.
+*.verified.txt text eol=lf working-tree-encoding=UTF-8
+*.verified.cs text eol=lf working-tree-encoding=UTF-8

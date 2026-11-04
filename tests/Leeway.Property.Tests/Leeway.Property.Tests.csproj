@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <PackageReference Include="FsCheck.Xunit.v3" />
+    <ProjectReference Include="..\..\src\Leeway.Core\Leeway.Core.csproj" />
+  </ItemGroup>
+</Project>
