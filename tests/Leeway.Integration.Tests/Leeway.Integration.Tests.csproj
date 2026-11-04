@@ -1,0 +1,9 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <PackageReference Include="CommunityToolkit.Datasync.Client" />
+    <PackageReference Include="CommunityToolkit.Datasync.Server" />
+    <PackageReference Include="CommunityToolkit.Datasync.Server.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+  </ItemGroup>
+</Project>
