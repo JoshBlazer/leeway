@@ -68,6 +68,7 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review, because it c
 **Status:** Accepted.
 **Context:** `FsCheck.Xunit.v3` needs xUnit v3 4.x, which runs only on Microsoft Testing Platform. `Avalonia.Headless.XUnit` 12.1.5 declares `>= 3.2.2` but fails on 4.x with `MissingMethodException`.
 **Decision:** One xUnit version across the repo, `global.json` selects the platform, and UI tests use `HeadlessUnitTestSession` from plain `[Fact]`s.
+**Analyzer tests:** The Roslyn harness's default reference assemblies are downloaded from NuGet at test time, which failed intermittently. Tests use `OfflineReferences`, which compiles against the running .NET 10 runtime. Analyzer results can therefore depend on the runtime version, which `global.json` constrains.
 **Commands:** `dotnet test --solution Leeway.slnx` and `dotnet test --project <path>`.
 
 ## ADR-0011: Dependency register

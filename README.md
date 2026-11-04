@@ -16,7 +16,7 @@ that tests all of it under partitions, clock skew, and duplicated or reordered s
 | Milestone | State | Proving command | Last local result |
 |---|---|---|---|
 | Scaffold: builds with warnings as errors in `src/` | Proven locally | `dotnet build Leeway.slnx -c Release` | 0 errors |
-| All tests | Proven locally | `dotnet test --solution Leeway.slnx` | 41 of 41 pass |
+| All tests | Proven locally | `dotnet test --solution Leeway.slnx` | 42 of 42 pass |
 | **M0** Edit offline, reconnect, sync (headless UI, real server) | Proven locally | `dotnet test --project tests/GateKeeper.Desktop.Tests` | 4 of 4 pass |
 | **M0** Same demo with real processes (Windows) | Proven locally | `powershell -ExecutionPolicy Bypass -File scripts/m0-demo.ps1` | `M0 DEMO PASSED` |
 | **M0** Datasync behaviour map | Proven locally | `dotnet test --project tests/Leeway.Integration.Tests` | 31 of 31 pass |

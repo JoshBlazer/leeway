@@ -10,7 +10,7 @@ Read this first at the start of each session. Append at the end of each session.
 - Scaffolded the solution, projects, tests, CI, and docs.
 - Built the M0 spike: `GateKeeper.Server`, `GateKeeper.Desktop`.
 - Wrote `docs/design/datasync-integration.md`, backed by 31 tests over real HTTP and SQLite.
-- Proved the exit check locally: 41 of 41 tests in Release, the live demo script passes, and the UI tests pass 192 of 192 under parallel load.
+- Proved the exit check locally: 42 of 42 tests in Release, from a clean clone, the live demo script passes, and the UI tests pass 192 of 192 under parallel load.
 
 **Key findings:** see the integration map. C24 (timeout reports success), C10 (resolver write loses updates), C25 (self-conflict), C19 (delta gap), C23 (process-wide lock).
 
