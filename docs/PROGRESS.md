@@ -32,3 +32,24 @@ Read this first at the start of each session. Append at the end of each session.
 **Next:** after review, get CI green and then start M1 with the HLC and merge design notes. Do not start M1 before review.
 
 **Simulation metrics:** runs 0; mutant catch rate not measured; shrunk regressions 0.
+
+## 2026-11-04: Session 1, continued, after maintainer review
+
+**Decisions from the maintainer**
+
+- ADR-0012 and ADR-0013 accepted.
+- Repository is public at `JoshBlazer/leeway`.
+- All commits are authored only as `Joshua Willie <joshblazerwillie@gmail.com>`, with no co-author or tool trailers unless explicitly asked. Local history was rewritten to match before the first push. See `CLAUDE.md`.
+- Upstream filing left to engineering judgement.
+
+**Done**
+
+- Pushed, and opened PR #1. [CI is green](https://github.com/JoshBlazer/leeway/actions/runs/42021427010) on its first run: 42 of 42 tests on Linux, and the sample builds on Linux, macOS, and Windows.
+- Filed upstream [#578](https://github.com/CommunityToolkit/Datasync/issues/578) (timeout reports success) and [#579](https://github.com/CommunityToolkit/Datasync/issues/579) (resolver write loses updates). U3 to U7 are held.
+- Corrected the C19 scope: it is shown on millisecond-precision SQLite, and source suggests finer stores are not affected.
+
+**State:** the M0 exit check is met and CI is green. PR #1 is open, so `main` still holds only the initial commit until it is merged.
+
+**Next:** merge PR #1 on the maintainer's word. Then M1, starting with the HLC and merge design notes. Watch #578 and #579 for replies.
+
+**Simulation metrics:** runs 0; mutant catch rate not measured; shrunk regressions 0.

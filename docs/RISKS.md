@@ -2,7 +2,7 @@
 
 | Risk | Status | Mitigation |
 |---|---|---|
-| Datasync extension points may not expose what is needed | **Partly materialized in M0.** Resolver merge is unsafe, and there is no pull hook | ADR-0012 design. Upstream proposals U1 to U7 (none filed yet) |
+| Datasync extension points may not expose what is needed | **Partly materialized in M0.** Resolver merge is unsafe, and there is no pull hook | ADR-0012 design. Upstream: #578 and #579 filed, others held (see the integration map) |
 | Datasync behaviour traps: false-success timeouts, lost progress, delta gap | **Materialized in M0** (C13, C19, C24, C25) | Probes pin them; simulator must model them |
 | Datasync version churn | Open | Pinned at 10.1.2. Probes fail if behaviour changes |
 | Vulnerable transitive native SQLite | **Materialized in M0.** Fixed here by pins | ADR-0008, C22. **Consumers of Leeway's packages do not inherit our pins**, so they must be told |
@@ -15,6 +15,6 @@
 | SQLite is not recommended for production Datasync servers | Open: **limits what Leeway can claim** | ADR-0003. State verified providers. A real deployment needs a provider Leeway has not tested |
 | Offline writes blocked by an in-flight push | Open | C23: unqueued local writes. Outbox design is an M3 open question |
 | Op table growth | Open | Retention policy design in M3 |
-| Avalonia and MAUI platform differences; NativeAOT on mobile | Open | CI builds on three OSes. **macOS and Linux have not yet run** |
+| Avalonia and MAUI platform differences; NativeAOT on mobile | Open | CI builds the sample on three OSes and runs tests on Linux. **The desktop window has only been run for real on Windows, and macOS has no test run** |
 | Package IDs are free but not reserved | Open | ADR-0007 |
 | Scope creep | Open | M0 to M5 before any later layer |

@@ -7,7 +7,7 @@ escrow-backed invariants ("stock never goes negative", even with every device of
 that tests all of it under partitions, clock skew, and duplicated or reordered sync.
 
 > **Status: early. Nothing described as "will" exists yet, and there are no packages to install.**
-> The Datasync spike (M0) is finished and awaiting review. See [the product brief](docs/PRODUCT.md) for the plan.
+> The Datasync spike (M0) is finished. See [the product brief](docs/PRODUCT.md) for the plan.
 
 ## Status
 
@@ -15,15 +15,15 @@ that tests all of it under partitions, clock skew, and duplicated or reordered s
 
 | Milestone | State | Proving command | Last local result |
 |---|---|---|---|
-| Scaffold: builds with warnings as errors in `src/` | Proven locally | `dotnet build Leeway.slnx -c Release` | 0 errors |
-| All tests | Proven locally | `dotnet test --solution Leeway.slnx` | 42 of 42 pass |
-| **M0** Edit offline, reconnect, sync (headless UI, real server) | Proven locally | `dotnet test --project tests/GateKeeper.Desktop.Tests` | 4 of 4 pass |
-| **M0** Same demo with real processes (Windows) | Proven locally | `powershell -ExecutionPolicy Bypass -File scripts/m0-demo.ps1` | `M0 DEMO PASSED` |
-| **M0** Datasync behaviour map | Proven locally | `dotnet test --project tests/Leeway.Integration.Tests` | 31 of 31 pass |
-| **CI** on Linux, macOS, Windows | **Not yet run** | `.github/workflows/ci.yml`, once pushed | No run yet |
+| Scaffold: builds with warnings as errors in `src/` | Proven in CI | `dotnet build Leeway.slnx -c Release` | 0 errors |
+| All tests | Proven in CI (Linux) | `dotnet test --solution Leeway.slnx` | 42 of 42 pass |
+| **M0** Edit offline, reconnect, sync (headless UI, real server) | Proven in CI (Linux) | `dotnet test --project tests/GateKeeper.Desktop.Tests` | 4 of 4 pass |
+| **M0** Same demo with real processes (Windows) | Proven locally (Windows) | `powershell -ExecutionPolicy Bypass -File scripts/m0-demo.ps1` | `M0 DEMO PASSED` |
+| **M0** Datasync behaviour map | Proven in CI (Linux) | `dotnet test --project tests/Leeway.Integration.Tests` | 31 of 31 pass |
+| **CI** | Green | `.github/workflows/ci.yml` | Tests on Linux; the Avalonia sample builds on Linux, macOS, and Windows |
 | M1 to M6 | Not started | See [roadmap](docs/ROADMAP.md) | |
 
-A milestone counts as done only when CI is green, so **M0 is not done yet.** Local results are from Windows 11 only.
+Tests also pass locally on Windows 11. They have not been run on macOS, where CI only builds the sample. The desktop window has only been run for real on Windows.
 Walkthrough with full output: [docs/walkthroughs/m0.md](docs/walkthroughs/m0.md).
 
 | Simulation metric | Value |
@@ -40,9 +40,9 @@ explained in the [integration map](docs/design/datasync-integration.md).
 - **A push that times out reports success**, with nothing sent and the change still queued (C24).
 - **The write after a conflict resolver's merge is unconditional**, so a concurrent update can be silently lost (C10).
 - **A poor signal alone can leave one device in a conflict with itself**, when the server applied a write but the response never arrived (C12, C25).
-- **A row sharing the sync token's millisecond is never pulled** (C19).
+- **On a millisecond-precision store such as SQLite, a row sharing the sync token's millisecond is never pulled** (C19).
 
-As a result, [ADR-0012](docs/DECISIONS.md) chooses an append-only operation log with merging done on the server, rather than a client conflict resolver alone.
+Two are filed upstream: [#578](https://github.com/CommunityToolkit/Datasync/issues/578) and [#579](https://github.com/CommunityToolkit/Datasync/issues/579). As a result, [ADR-0012](docs/DECISIONS.md) chooses an append-only operation log with merging done on the server, rather than a client conflict resolver alone.
 
 ## Honest limits
 

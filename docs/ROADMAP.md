@@ -4,7 +4,7 @@ Each milestone ends with an exit check, `docs/walkthroughs/mN.md`, and a review 
 
 | ID | Milestone | Exit check | State |
 |---|---|---|---|
-| M0 | Datasync spike | Demo: edit offline, reconnect, sync; integration map complete | Proven locally on Windows, **CI not yet run**, awaiting review |
+| M0 | Datasync spike | Demo: edit offline, reconnect, sync; integration map complete | Exit check met, CI green. Tests on Linux and Windows; sample built on Linux, macOS, and Windows |
 | M1 | `Leeway.Core`: counters, sets, HLC registers, escrow ledger, op log | Property tests: merge commutativity, associativity, idempotence; escrow conservation | Not started |
 | M2 | Simulator and mutation corpus, nightly CI | Simulator catches every mutant; 10,000 seeded runs green | Not started |
 | M3 | Escrow end to end | Two offline clients spend within leases, reconnect, invariant holds; overspend becomes provisional and resolves correctly | Not started |

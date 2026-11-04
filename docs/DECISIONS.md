@@ -108,6 +108,6 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 ## ADR-0013: Server stamps strictly increasing UpdatedAt
 
 **Status:** Accepted by the maintainer, 2026-11-04. Goes with ADR-0012.
-**Context:** The pull filter is `updatedAt gt <token>` at millisecond resolution, so a later commit in the token's millisecond is never delivered (C19). That breaks simulator property 2 (convergence) with no error anywhere.
+**Context:** The pull filter is `updatedAt gt <token>`, and SQLite stores `UpdatedAt` in milliseconds, so a later commit in the token's millisecond is never delivered (C19). That breaks simulator property 2 (convergence) with no error anywhere.
 **Decision:** Leeway's server repository stamps `max(now, lastStamp + 1ms)` inside the write transaction. SQLite's single writer makes this sufficient.
 **Honest limit:** This relies on commit order matching stamp order. A server database with concurrent writers needs more care, and that is another reason ADR-0003 limits what is verified.

@@ -23,7 +23,7 @@ carrier for per-field merging and a good carrier for an **append-only operation 
 | 2 | **The write after a resolver merge is unconditional** (C09), so a third writer in the window is silently lost (C10) | `IConflictResolver` cannot be the place a merge is finalized |
 | 3 | **Completed work is recorded only at the end of a batch.** A mid-batch connection drop forgets successes (C13), and a lost response or timeout makes a device conflict with itself (C12, C25) | Delivery is at-least-once. Application must be idempotent |
 | 4 | **Edits to a row are compacted** into one whole-row operation (C07) | The queue cannot carry intent. Leeway needs its own operation log |
-| 5 | **A row sharing the delta token's millisecond is never pulled** (C19) | Silent convergence failure. The server must stamp strictly increasing `UpdatedAt` |
+| 5 | **On a millisecond-precision store, a row sharing the delta token's millisecond is never pulled** (C19) | Silent convergence failure on SQLite, which is all Leeway tests on. The server must stamp strictly increasing `UpdatedAt` |
 | 6 | **The sync lock is process-wide**: queued local writes block during any push (C23) | An offline spend must not wait on the network, so it cannot go through a queued write |
 
 These findings led to the design in [ADR-0012](../DECISIONS.md#adr-0012-carry-intent-in-an-append-only-operation-table-and-merge-on-the-server).
@@ -98,18 +98,20 @@ the sample reached this path. See `docs/walkthroughs/m0.md`.
 
 ## Upstream proposals (constraint 3)
 
-None have been filed. Keyword searches of the upstream tracker for U1, U2, U3, U4, and U6 found no matching issue, which does not
-prove there is none. Filing is outward-facing, so these wait for maintainer approval. Leeway works around each one in the meantime.
+Only the two clearest are filed: deterministic, independent of the database, and with no reasonable case for the current behaviour. The
+others are design requests or narrower, so they are held to avoid flooding a small team. Keyword searches found no existing issue for U1 to U4 or U6, which does not prove there is none. Leeway works around each one regardless.
 
-| # | Proposal | Evidence | Workaround |
-|---|---|---|---|
-| U1 | A timed-out push should report failure, not success | C24, C25 | Check the queue after push |
-| U2 | Resolver `Client` result should send `If-Match` with the server version just received | C09, C10 | Merge on the server; rebase (C11) |
-| U3 | Persist each operation's completion as it happens | C13 | Idempotent op table |
-| U4 | Close the same-millisecond delta gap, for example `ge` with client-side dedupe | C19 | Strictly increasing server stamps (ADR-0013) |
-| U5 | Order queued operations by `Sequence` | *source* | Order-independent application |
-| U6 | Scope the sync lock per context or store, not per process | C23 | Unqueued local writes |
-| U7 | Expose a pull hook | *source* | Re-apply local ops after pull |
+| # | Proposal | Evidence | Workaround | Upstream |
+|---|---|---|---|---|
+| U1 | A timed-out push should report failure, not success | C24, C25 | Check the queue after push | [#578](https://github.com/CommunityToolkit/Datasync/issues/578) |
+| U2 | Resolver `Client` result should send `If-Match` with the server version just received | C09, C10 | Merge on the server; rebase (C11) | [#579](https://github.com/CommunityToolkit/Datasync/issues/579) |
+| U3 | Persist each operation's completion as it happens | C13 | Idempotent op table | Held |
+| U4 | Close the same-millisecond delta gap, for example `ge` with client-side dedupe | C19 | Strictly increasing server stamps (ADR-0013) | Held: see below |
+| U5 | Order queued operations by `Sequence` | *source* | Order-independent application | Held |
+| U6 | Scope the sync lock per context or store, not per process | C23 | Unqueued local writes | Held |
+| U7 | Expose a pull hook | *source* | Re-apply local ops after pull | Held |
+
+**Why U4 is held:** the client truncates its delta token to milliseconds (`DefaultDeltaTokenStore`, *source*). On a store with finer `UpdatedAt` precision, a same-millisecond row should still compare greater than the token, so the gap looks specific to millisecond-precision stores, such as SQLite with the converter above. Datasync already advises against SQLite for production. This reasoning about other stores is from source only, untested. C19 itself is tested on SQLite.
 
 ## Open questions for M3
 
