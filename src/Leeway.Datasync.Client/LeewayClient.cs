@@ -117,6 +117,16 @@ public sealed class EntityEdit<T> where T : OfflineEntity
 }
 
 /// <summary>
+/// Allows one sync at a time in the process, whichever client it belongs to. Datasync's own sync lock is meant to be
+/// process-wide already, but has a race between release and acquire when contexts overlap. Going one at a time avoids
+/// it. A client stuck on a slow network therefore delays other clients' syncs, though never their local writes.
+/// </summary>
+internal static class LeewaySyncGate
+{
+    public static readonly SemaphoreSlim Instance = new(1, 1);
+}
+
+/// <summary>
 /// The device's side of Leeway. Local writes need no network and never wait for one. See docs/design/escrow-protocol.md.
 /// Use one instance per store.
 /// </summary>
@@ -130,9 +140,6 @@ public sealed class LeewayClient<TContext>(Func<TContext> createContext, LeewayC
 
     /// <summary>Serializes local writes on this device. It is never held across a network call.</summary>
     private readonly SemaphoreSlim writeGate = new(1, 1);
-
-    /// <summary>Allows one sync at a time.</summary>
-    private readonly SemaphoreSlim syncGate = new(1, 1);
 
     /// <summary>Creates a store context, for reading. Saving a merged entity through it is refused.</summary>
     /// <returns>A new context, which the caller disposes.</returns>
@@ -313,7 +320,7 @@ public sealed class LeewayClient<TContext>(Func<TContext> createContext, LeewayC
     /// <returns>How it went.</returns>
     public async Task<SyncReport> SyncAsync(CancellationToken cancellationToken = default)
     {
-        await this.syncGate.WaitAsync(cancellationToken);
+        await LeewaySyncGate.Instance.WaitAsync(cancellationToken);
         try
         {
             SyncReport push = await PushCoreAsync(cancellationToken);
@@ -327,7 +334,7 @@ public sealed class LeewayClient<TContext>(Func<TContext> createContext, LeewayC
         }
         finally
         {
-            this.syncGate.Release();
+            LeewaySyncGate.Instance.Release();
         }
     }
 
@@ -336,14 +343,14 @@ public sealed class LeewayClient<TContext>(Func<TContext> createContext, LeewayC
     /// <returns>How it went.</returns>
     public async Task<SyncReport> PushAsync(CancellationToken cancellationToken = default)
     {
-        await this.syncGate.WaitAsync(cancellationToken);
+        await LeewaySyncGate.Instance.WaitAsync(cancellationToken);
         try
         {
             return await PushCoreAsync(cancellationToken);
         }
         finally
         {
-            this.syncGate.Release();
+            LeewaySyncGate.Instance.Release();
         }
     }
 
@@ -352,14 +359,14 @@ public sealed class LeewayClient<TContext>(Func<TContext> createContext, LeewayC
     /// <returns>How it went.</returns>
     public async Task<SyncReport> PullAsync(CancellationToken cancellationToken = default)
     {
-        await this.syncGate.WaitAsync(cancellationToken);
+        await LeewaySyncGate.Instance.WaitAsync(cancellationToken);
         try
         {
             return new SyncReport(await PullCoreAsync(cancellationToken) ? SyncState.Synced : SyncState.Offline);
         }
         finally
         {
-            this.syncGate.Release();
+            LeewaySyncGate.Instance.Release();
         }
     }
 

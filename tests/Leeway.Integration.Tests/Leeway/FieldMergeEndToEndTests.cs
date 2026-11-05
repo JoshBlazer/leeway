@@ -260,6 +260,43 @@ public class FieldMergeEndToEndTests
         }
     }
 
+    /// <summary>
+    /// Datasync's process-wide lock has a race when contexts overlap (see the integration map), so clients must not overlap.
+    /// </summary>
+    [Fact]
+    public async Task Clients_in_one_process_sync_one_at_a_time()
+    {
+        await using TestServer server = await TestServer.StartAsync();
+        using Gate a = await Gate.OpenAsync(server, "gate-a");
+        using Gate b = await Gate.OpenAsync(server, "gate-b");
+        await a.Client.EditAsync<Zone>("north", e => e.Add(z => z.CheckIns, 1));
+        await b.Client.EditAsync<Zone>("north", e => e.Add(z => z.CheckIns, 1));
+
+        TaskCompletionSource arrived = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        TaskCompletionSource release = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        a.Fault.BeforeSend = async _ =>
+        {
+            arrived.TrySetResult();
+            await release.Task;
+        };
+        b.Fault.Requests.Clear();
+
+        Task<SyncReport> syncA = a.Client.SyncAsync();
+        await arrived.Task;
+        Task<SyncReport> syncB = b.Client.SyncAsync();
+        await Task.Delay(500);
+        Assert.Empty(b.Fault.Requests);
+        Assert.False(syncB.IsCompleted);
+
+        // Local writes do not wait, even while both clients' syncs are held up.
+        await b.Client.EditAsync<Zone>("north", e => e.Add(z => z.CheckIns, 1)).WaitAsync(TimeSpan.FromSeconds(5));
+
+        a.Fault.BeforeSend = null;
+        release.SetResult();
+        Assert.Equal(SyncState.Synced, (await syncA).State);
+        Assert.Equal(SyncState.Synced, (await syncB).State);
+    }
+
     [Fact]
     public async Task A_connection_drop_mid_batch_loses_nothing_and_applies_nothing_twice()
     {

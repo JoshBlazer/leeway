@@ -1,6 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
     <PackageReference Include="CommunityToolkit.Datasync.Client" />
     <PackageReference Include="CommunityToolkit.Datasync.Server" />
     <PackageReference Include="CommunityToolkit.Datasync.Server.EntityFrameworkCore" />
