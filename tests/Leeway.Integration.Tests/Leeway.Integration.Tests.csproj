@@ -5,5 +5,7 @@
     <PackageReference Include="CommunityToolkit.Datasync.Server" />
     <PackageReference Include="CommunityToolkit.Datasync.Server.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <ProjectReference Include="..\..\src\Leeway.Datasync.Client\Leeway.Datasync.Client.csproj" />
+    <ProjectReference Include="..\..\src\Leeway.Datasync.Server\Leeway.Datasync.Server.csproj" />
   </ItemGroup>
 </Project>
