@@ -43,7 +43,7 @@ CASES = [
      "authority.IsOpen || (authority.CurrentDevice is { } device && device == entity?.Device)", "authority.IsOpen || authority.CurrentDevice is not null", HARDENING),
     ("Entities can be read with no identity", ACCESS,
      "public override ValueTask<bool> IsAuthorizedAsync(TableOperation operation, T? entity, CancellationToken cancellationToken = default)\n        => ValueTask.FromResult(operation is TableOperation.Query or TableOperation.Read && (authority.IsOpen || authority.CurrentDevice is not null));",
-     "public override ValueTask<bool> IsAuthorizedAsync(TableOperation operation, T? entity, CancellationToken cancellationToken = default)\n        => ValueTask.FromResult(operation is TableOperation.Query or TableOperation.Read);", HARDENING),
+     "public override ValueTask<bool> IsAuthorizedAsync(TableOperation operation, T? entity, CancellationToken cancellationToken = default)\n        => ValueTask.FromResult(operation is TableOperation.Query or TableOperation.Read && (authority.IsOpen || true));", HARDENING),
     ("A device can read every lease", ACCESS,
      "        string? device = authority.CurrentDevice;\n        return x => x.Device == device;\n    }\n}\n\n/// <summary>Clients may only append",
      "        return null;\n    }\n}\n\n/// <summary>Clients may only append", HARDENING),
@@ -100,6 +100,9 @@ def main():
     env = dict(os.environ, AVALONIA_TELEMETRY_OPTOUT="1")
     noticed = 0
     cases = [c for c in CASES if len(c) == 5] if "--hardening-only" in sys.argv else CASES
+    if "--case" in sys.argv:
+        wanted = sys.argv[sys.argv.index("--case") + 1]
+        cases = [c for c in cases if wanted in c[0]]
     for name, path, old, new, *rest in cases:
         raw = open(path, encoding="utf-8", newline="").read()
         source = raw.replace("\r\n", "\n")
