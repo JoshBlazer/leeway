@@ -20,4 +20,5 @@
 | Offline writes blocked by an in-flight push | Solved in M3 | C23: writes go to an unqueued outbox, tested end to end |
 | Avalonia and MAUI platform differences; NativeAOT on mobile | Open | CI builds the sample on three OSes and runs tests on Linux. **The desktop window has only been run for real on Windows, and macOS has no test run** |
 | Package IDs are free but not reserved | Open | ADR-0007 |
-| Scope creep | Open | M0 to M5 before any later layer |
+| Analyzer false positives on real code | Open: only tested on small snippets | Needs a real project, which M6 provides |
+| Scope creep | Open | M0 to M5 are done, so M6 comes before any later layer |

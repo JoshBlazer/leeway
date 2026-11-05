@@ -27,6 +27,8 @@ jobs:
       - run: dotnet restore Leeway.slnx
       - run: dotnet build Leeway.slnx -c Release --no-restore
       - run: dotnet test --solution Leeway.slnx -c Release --no-build
+      - name: Check the real packages
+        run: python3 scripts/package-check.py
 
   sample:
     name: Build Avalonia sample (${{ matrix.os }})

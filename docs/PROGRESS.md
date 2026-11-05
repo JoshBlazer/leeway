@@ -68,12 +68,27 @@ The maintainer asked for M1 to M4 in one run, so there were no review stops betw
 - The simulator found 3 real bugs in the correct code, after all property tests were green. See `docs/walkthroughs/m2.md`.
 - Sabotage found 3 adapter protections no test really covered. See `docs/walkthroughs/m3.md`.
 
-**State:** work is on branch `m1-m4`, on an open PR awaiting the maintainer's review. Not merged.
+**State:** merged to `main` by fast-forward on the maintainer's word (PR #2).
 
 **Known gaps to pick up:** retention of op tables and outboxes, a discard path for refused operations, entity deletion, device authentication hook, local write benchmark. GateKeeper still needs moving onto Leeway (M6). 
 **Upstream:** the maintainer fixed #578 in PR #581 the same day, not yet released, and is looking at #579. The fix makes a timed-out push throw `TimeoutException`, which `LeewayClient` now handles. Before upgrading past 10.1.2, read "When upgrading" in the integration map, because probes C13, C24, and C25 will need updating.
 
-**Next:** merge on the maintainer's word, check that the nightly soak runs, then M5, starting with the generator design note.
 
 **Simulation metrics:** longest run 200,000, no failures; mutant catch rate 18 of 18; shrunk regressions 18.
+
+## 2026-11-05: Session 2, continued, M5
+
+**Done**
+
+- Merged PR #2. Triggered the nightly soak by hand: 200,000 runs from start seed 572291612, no failures, and 18 of 18 mutants caught.
+- M5: `docs/design/generator.md`, generated schema and typed API, rules LEE001 to LEE006, code fixes, and `scripts/package-check.py` in CI. ADR-0016 added, and ADR-0015 updated.
+- Tried `ISet<string>`: EF Core refuses it without a converter, so sets stay as JSON strings.
+
+**State:** work is on branch `m5`, on a PR awaiting the maintainer's review. Not merged.
+
+**Next:** merge on the maintainer's word. Then M6, which moves GateKeeper onto Leeway, adds the dashboard, and records the demo. That is the first real use of the analyzer, so watch for false positives.
+
+**Still open from earlier:** retention, a discard path for refused operations, entity deletion, a device authentication hook, a local write benchmark. Upstream #579 is open.
+
+**Simulation metrics:** longest local run 200,000, no failures; mutant catch rate 18 of 18; shrunk regressions 18.
 

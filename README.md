@@ -4,7 +4,7 @@
 
 Leeway extends the .NET Foundation's [Datasync Community Toolkit](https://github.com/CommunityToolkit/Datasync) so that offline apps can keep business rules such as "a venue never overfills", even with every device offline. It adds per-field merges, escrow-backed limits, and a deterministic simulator that tests all of it under partitions, clock skew, and duplicated or reordered sync.
 
-> **Status: early. There are no packages to install yet.** The merge logic, simulator, and Datasync integration work and are tested. The Roslyn tooling and the demo app are still to come. See [the roadmap](docs/ROADMAP.md).
+> **Status: early. Nothing is published yet.** The merge logic, simulator, Datasync integration, and Roslyn tooling work and are tested. The demo app is still to come, and it is [not ready for production](#honest-limits). See [the roadmap](docs/ROADMAP.md).
 
 ```csharp
 public class Zone : OfflineEntity
@@ -14,14 +14,18 @@ public class Zone : OfflineEntity
     [LastWriterWins]              public string? Notes { get; set; }
 }
 
-// With no signal at all:
-SpendResult result = await client.TrySpendAsync<Zone>("north", z => z.RemainingCapacity, 1);
+// With no signal at all. These methods are generated from the attributes:
+SpendResult result = await client.TrySpendRemainingCapacityAsync("north", 1);
 // Confirmed: within this device's lease, and guaranteed.
 // Provisional: beyond it, and the server decides on reconnect.
 
-await client.EditAsync<Zone>("north", e => e.Add(z => z.CheckIns, 1).Set(z => z.Notes, "Turnstile 3 jammed"));
+await client.AddCheckInsAsync("north", 1);
+await client.SetNotesAsync("north", "Turnstile 3 jammed");
 
 await client.SyncAsync();
+
+// And the analyzer warns on this, with a code fix to add [Escrow] or [Counter]:
+someEntity.Stock--;   // LEE001
 ```
 
 ## Status
@@ -30,21 +34,23 @@ await client.SyncAsync();
 
 | Milestone | State | Proving command | Last result |
 |---|---|---|---|
-| All tests | CI (Linux), and locally on Windows | `dotnet test --solution Leeway.slnx -c Release` | 115 of 115 pass |
+| All tests | CI (Linux), and locally on Windows | `dotnet test --solution Leeway.slnx -c Release` | 166 of 166 pass |
 | **M0** Datasync spike | Done | `dotnet test --project tests/GateKeeper.Desktop.Tests` | 4 of 4 pass |
-| **M1** `Leeway.Core` | Exit check met | `dotnet test --project tests/Leeway.Property.Tests` | 35 of 35 pass |
-| **M2** Simulator and mutants | Exit check met | `dotnet run --project mutants/Leeway.Mutants -c Release -- catch` | 18 of 18 caught |
-| **M3** Escrow end to end | Exit check met | `dotnet test --project tests/Leeway.Integration.Tests` | 61 of 61 pass |
-| **M4** Per-field merging | Exit check met | Same | Same |
+| **M1** `Leeway.Core` | Done | `dotnet test --project tests/Leeway.Property.Tests` | 35 of 35 pass |
+| **M2** Simulator and mutants | Done | `dotnet run --project mutants/Leeway.Mutants -c Release -- catch` | 18 of 18 caught |
+| **M3** Escrow end to end | Done | `dotnet test --project tests/Leeway.Integration.Tests` | 65 of 65 pass |
+| **M4** Per-field merging | Done | Same | Same |
+| **M5** Generator and analyzer | Exit check met | `dotnet test --project tests/Leeway.Analyzers.Tests` | 37 of 37 pass, plus 14 of 14 for the generator |
+| Real NuGet packages | CI (Linux), and locally on Windows | `python scripts/package-check.py` | `PACKAGE CHECK PASSED` |
 | Adapter protections | Locally on Windows | `python scripts/adapter-sabotage.py` | 8 of 8 caught |
-| M5, M6 | Not started | See [roadmap](docs/ROADMAP.md) | |
+| M6 | Not started | See [roadmap](docs/ROADMAP.md) | |
 
 Tests have not been run on macOS, where CI only builds the sample. The real desktop window has only been run on Windows.
-Walkthroughs with full output: [M0](docs/walkthroughs/m0.md), [M1](docs/walkthroughs/m1.md), [M2](docs/walkthroughs/m2.md), [M3](docs/walkthroughs/m3.md), [M4](docs/walkthroughs/m4.md).
+Walkthroughs with full output: [M0](docs/walkthroughs/m0.md), [M1](docs/walkthroughs/m1.md), [M2](docs/walkthroughs/m2.md), [M3](docs/walkthroughs/m3.md), [M4](docs/walkthroughs/m4.md), [M5](docs/walkthroughs/m5.md).
 
 | Simulation metric | Value |
 |---|---|
-| Longest run on the correct code | 200,000 seeded runs, no failures |
+| Longest run on the correct code | 200,000 seeded runs, no failures, locally and in nightly CI from a random seed |
 | In the test suite | 10,000 seeded runs |
 | Mutant catch rate | 18 of 18 |
 | Shrunk regressions | 18 |
@@ -81,7 +87,7 @@ What Leeway cannot guarantee is as important as what it can.
 
 | Path | Contents |
 |---|---|
-| `src/` | `Leeway.Core`, the Datasync client and server adapters, and the simulator. The generator and analyzer are still scaffolds |
+| `src/` | `Leeway.Core`, the Datasync client and server adapters, the simulator, the generator, and the analyzer |
 | `samples/` | GateKeeper server and Avalonia desktop app |
 | `tests/` | Unit, property, snapshot, analyzer, integration, and UI tests |
 | `mutants/` | Deliberately broken implementations that measure the simulator |

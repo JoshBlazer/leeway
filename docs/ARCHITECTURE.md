@@ -1,6 +1,6 @@
 # Architecture (draft)
 
-Updated after M4. The data flow below follows ADR-0012, and it is built.
+Updated after M5. The data flow below follows ADR-0012, and it is built.
 
 ```
  ┌──────── Avalonia / MAUI app ────────┐          ┌────────── ASP.NET Core server ──────────┐
@@ -20,8 +20,8 @@ Updated after M4. The data flow below follows ADR-0012, and it is built.
 | `Leeway.Core` | Pure logic: counters, sets, HLC registers, stamp admission, escrow ledger, op log, schema, guarantee classes. No Datasync dependency | Built (M1) |
 | `Leeway.Datasync.Client` | Captures operations, manages the wallet, exposes provisional status | Built (M3, M4) |
 | `Leeway.Datasync.Server` | Escrow authority, idempotent application, invariants | Built (M3, M4) |
-| `Leeway.Generators` | Attributes to merge code | Scaffold (emits nothing) |
-| `Leeway.Analyzers` | Diagnostics and code fixes | Scaffold (reports nothing) |
+| `Leeway.Generators` | Attributes to a schema and typed API | Built (M5) |
+| `Leeway.Analyzers`, `.CodeFixes` | Diagnostics and code fixes, as one package | Built (M5) |
 | `Leeway.Simulation` | Deterministic simulator | Built (M2) |
 | `mutants/Leeway.Mutants` | Mutation corpus, catch-rate and soak commands | Built (M2) |
 | `samples/GateKeeper.Server`, `.Desktop` | M0 spike: one entity, default resolver. **It does not use Leeway yet** | Working, due for rework in M6 |

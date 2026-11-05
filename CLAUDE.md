@@ -26,6 +26,7 @@ powershell -ExecutionPolicy Bypass -File scripts/m0-demo.ps1    # Windows, after
 dotnet run --project mutants/Leeway.Mutants -c Release -- catch
 dotnet run --project mutants/Leeway.Mutants -c Release -- soak 10000 1
 python scripts/adapter-sabotage.py                              # Clean tree. Slow: about 20 minutes
+python scripts/package-check.py                                 # Real packages, in an outside project
 ```
 
 Tests run on Microsoft Testing Platform (ADR-0010). `dotnet test <path>` and VSTest options do not apply.
@@ -41,4 +42,5 @@ Tests run on Microsoft Testing Platform (ADR-0010). `dotnet test <path>` and VST
 - Soak the correct implementation before believing a mutant catch rate. A bug in the correct code looks like a 100% catch rate.
 - A test passing first time proves little. Check that it can fail: the first sabotage run found three protections no test really covered.
 - Sabotage tools must fail loudly if no tests ran. One of ours once reported four false "survived" results for that reason.
+- A snapshot is only a promise about text: read a new one before accepting it.
 - Change entities only through `LeewayClient`. Direct EF saves are refused, because a queued whole-row write would block pulls (C06).

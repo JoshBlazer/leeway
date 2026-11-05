@@ -119,10 +119,17 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 **Decision:** The server clamps a stamp to `now + maxDrift`, places it between the operation's neighbours in the device's sequence, then raises it above whatever the device had seen. Each operation carries `SettledBelow`, which bounds the state kept. Details and the rejected designs are in `docs/design/hlc.md`.
 **Consequence:** `Operation` carries `Observed`, `Sequence`, and `SettledBelow`, and the server stores some state per device.
 
-## ADR-0015: Until the generator exists, read attributes by reflection and store sets as JSON text
+## ADR-0015: Read attributes by reflection only as a fallback, and store sets as JSON text
 
-**Status:** Accepted, as a stopgap for M5.
+**Status:** Accepted. The stopgap parts were reviewed in M5: the generator now produces the schema and a typed API, with reflection as a fallback. Sets remain JSON text.
 **Context:** The brief's sketch has `ISet<string> Flags` and `zone.TrySpendAsync(...)`. M4 comes before the generator.
 **Decision:** `MergeSchema` reads the attributes by reflection. An `[AddWinsSet]` property is a `string` holding a JSON array. Spends and edits go through `LeewayClient`, as in `client.TrySpendAsync<Zone>("north", z => z.RemainingCapacity, 1)`.
-**Consequence:** The developer experience is rougher than the sketch, and reflection rules out NativeAOT for now. M5 should generate the schema and the friendlier API. `ISet<string>` has not been tried against EF Core and OData.
+**M5 result:** `ISet<string>` was tried. EF Core refuses it without a value converter (`HashSet<string> cannot be used as a primitive collection`), and OData would still need testing beyond that. For little gain, it stays a JSON string, and LEE003 requires one.
+**Consequence:** The API differs from the sketch: `client.TrySpendRemainingCapacityAsync("north", 1)`, because an entity does not hold a client. Reflection-based JSON still rules out NativeAOT.
+
+## ADR-0016: Package the code fixes with the analyzer, built from a separate project
+
+**Status:** Accepted.
+**Context:** Analyzers load inside the compiler, where Workspaces may not be available, so an analyzer assembly must not reference it (RS1038).
+**Decision:** `Leeway.Analyzers` holds the rules, and `Leeway.Analyzers.CodeFixes` holds the fixes. The package `Leeway.Analyzers` is built from the code fix project and contains both assemblies. `scripts/package-check.py` tests the real packages, in CI.
 
