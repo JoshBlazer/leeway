@@ -55,8 +55,8 @@ Property tests of commutativity, associativity, and idempotence for all four typ
 
 ## Honest limits
 
-- **Tombstones and per-replica entries grow forever.** Compaction requires knowing every replica has seen a tombstone, and a device may stay offline indefinitely. This is not solved in v1.
+- **Tombstones and per-replica entries grow forever,** though operations can now be pruned (`hardening.md`). Compaction requires knowing every replica has seen a tombstone, and a device may stay offline indefinitely. This is not solved in v1.
 - **A counter has no bound.** Use escrow if it must not cross a limit.
 - **Add-wins is a policy.** A remove racing an add loses, which is wrong for some domains, such as revoking access.
 - **Registers lose one write.** Concurrent writers to a field do not merge their text. One value wins, and that is not reported in v1.
-- **Deleting entities is not implemented.** Merging a delete against concurrent edits needs its own policy.
+- **Delete wins, with no undo.** See `hardening.md`.

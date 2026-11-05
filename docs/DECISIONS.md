@@ -133,3 +133,17 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 **Context:** Analyzers load inside the compiler, where Workspaces may not be available, so an analyzer assembly must not reference it (RS1038).
 **Decision:** `Leeway.Analyzers` holds the rules, and `Leeway.Analyzers.CodeFixes` holds the fixes. The package `Leeway.Analyzers` is built from the code fix project and contains both assemblies. `scripts/package-check.py` tests the real packages, in CI.
 
+## ADR-0017: Device authentication is a required decision, supplied by the application
+
+**Status:** Accepted.
+**Context:** With no check, any client could spend from another device's lease. Leeway cannot know how an application identifies devices.
+**Decision:** `AddLeewayServer` throws unless the app sets `AuthenticateDevice`, or explicitly sets `AllowUnauthenticatedDevices`. Leeway takes an identity and enforces who may act as whom. It does not issue or validate credentials. See `docs/design/hardening.md`.
+**Consequence:** Controllers take the authority as a constructor argument. There is no per-entity access control.
+
+## ADR-0018: Send a device's operations one at a time, in order
+
+**Status:** Accepted. It revises part of ADR-0012, which said only that order must not matter for safety. That still holds.
+**Context:** The M6 demo showed a device's provisional spends competing in arbitrary order, because Datasync's queue has no `ORDER BY`.
+**Decision:** The client copies one operation into the queue, pushes, and repeats, stopping at the first with no answer.
+**Consequence:** One round trip per operation, which has not been measured over real latency. Datasync's newer "completed operations are saved" behaviour matters less. The simulator still reorders, because safety must not depend on this.
+

@@ -12,11 +12,12 @@
 | Stranded quota and allocation fairness | Open | ADR-0005: explicit write-off, documented risk |
 | Clock skew and HLC correctness | **Materialized in M2:** two designs were wrong | ADR-0014, simulator clock-skew faults, 200,000-run soak. A rare bug could remain, which nightly runs look for |
 | The simulator tests a model of the transport, not the adapters | Open | Probes, end-to-end tests, and `scripts/adapter-sabotage.py` cover the adapters, with far fewer schedules |
-| Op table, outbox, and tombstone growth | Open: nothing is ever pruned | Retention design needed before real use |
+| Tombstone and counter-entry growth | Open | Operations can be pruned. These cannot yet, because a device can stay offline indefinitely |
+| Pruning breaks exactly-once | Handled | Pruning uses what each device reports, tested end to end, in the simulator, and with a mutant |
 | Local write speed | Roughly measured in M6, at about 8 to 19 ms a write | Fine for a gate on one machine. There is no benchmark suite, so a regression would go unnoticed. Connection pooling matters |
-| Provisional order | **Found in M6:** a device's provisional spends are not first come, first served | Documented. The limit still holds. Ordering would need Leeway to send operations one at a time |
-| Rejected operations have no discard path | Open | They are reported as `Failed` and do not block pulls. An API to discard one is needed |
-| No device authentication | Open | Documented. An application must authenticate devices, and Leeway should offer a hook |
+| Provisional order | Fixed within a device (ADR-0018) | Two gates still race, in the order they reconnect. One round trip per operation has not been measured over real latency |
+| Rejected operations | Handled | Reported as `Failed`, they do not block pulls, and `DiscardRefusedAsync` removes them |
+| Authentication misconfiguration | Handled at startup | The server will not start without a decision. There is no per-entity access control |
 | Server stamp ordering outside SQLite | Open | ADR-0013 relies on a single writer. Other providers unverified |
 | SQLite is not recommended for production Datasync servers | Open: **limits what Leeway can claim** | ADR-0003. State verified providers. A real deployment needs a provider Leeway has not tested |
 | Offline writes blocked by an in-flight push | Solved in M3 | C23: writes go to an unqueued outbox, tested end to end |

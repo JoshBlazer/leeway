@@ -12,7 +12,7 @@ GateKeeper is event check-in at venue gates with bad signal. Two gates go offlin
 
 ![GateKeeper demo](docs/assets/gatekeeper-demo.gif)
 
-These are captured frames from an end-to-end test, not a screen recording. [How to run it yourself](docs/walkthroughs/m6.md).
+These are captured frames from an end-to-end test, not a screen recording. [How to run it yourself](docs/walkthroughs/m6.md), or [read the write-up](docs/writeup.md).
 
 ## The code
 
@@ -44,27 +44,27 @@ someEntity.Stock--;   // LEE001
 
 | Milestone | State | Proving command | Last result |
 |---|---|---|---|
-| All tests | CI (Linux), and locally on Windows | `dotnet test --solution Leeway.slnx -c Release` | 171 of 171 pass |
+| All tests | CI (Linux), and locally on Windows | `dotnet test --solution Leeway.slnx -c Release` | 188 of 188 pass |
 | **M0** Datasync spike | Done | `dotnet test --project tests/Leeway.Integration.Tests` (the spike itself became GateKeeper) | See M3 |
 | **M1** `Leeway.Core` | Done | `dotnet test --project tests/Leeway.Property.Tests` | 35 of 35 pass |
-| **M2** Simulator and mutants | Done | `dotnet run --project mutants/Leeway.Mutants -c Release -- catch` | 18 of 18 caught |
-| **M3** Escrow end to end | Done | `dotnet test --project tests/Leeway.Integration.Tests` | 66 of 66 pass |
+| **M2** Simulator and mutants | Done | `dotnet run --project mutants/Leeway.Mutants -c Release -- catch` | 19 of 19 caught |
+| **M3** Escrow end to end | Done | `dotnet test --project tests/Leeway.Integration.Tests` | 82 of 82 pass |
 | **M4** Per-field merging | Done | Same | Same |
 | **M5** Generator and analyzer | Done | `dotnet test --project tests/Leeway.Analyzers.Tests` | 37 of 37 pass, plus 14 of 14 for the generator |
 | Real NuGet packages | CI (Linux), and locally on Windows | `python scripts/package-check.py` | `PACKAGE CHECK PASSED` |
-| Adapter protections | Locally on Windows | `python scripts/adapter-sabotage.py` | 8 of 8 caught |
+| Adapter protections | Locally on Windows | `python scripts/adapter-sabotage.py` | 20 of 20 caught |
 | **M6** GateKeeper demo | Exit check met | `dotnet test --project tests/GateKeeper.Desktop.Tests` | 8 of 8 pass |
 | **M6** Demo with real processes (Windows) | Locally | `powershell -ExecutionPolicy Bypass -File scripts/m6-demo.ps1` | `M6 DEMO PASSED` |
 
 Tests have not been run on macOS, where CI only builds the sample. The real desktop window has only been run on Windows.
-Walkthroughs with full output: [M0](docs/walkthroughs/m0.md), [M1](docs/walkthroughs/m1.md), [M2](docs/walkthroughs/m2.md), [M3](docs/walkthroughs/m3.md), [M4](docs/walkthroughs/m4.md), [M5](docs/walkthroughs/m5.md), [M6](docs/walkthroughs/m6.md).
+Walkthroughs with full output: [M0](docs/walkthroughs/m0.md), [M1](docs/walkthroughs/m1.md), [M2](docs/walkthroughs/m2.md), [M3](docs/walkthroughs/m3.md), [M4](docs/walkthroughs/m4.md), [M5](docs/walkthroughs/m5.md), [M6](docs/walkthroughs/m6.md), [hardening](docs/walkthroughs/hardening.md).
 
 | Simulation metric | Value |
 |---|---|
 | Longest run on the correct code | 200,000 seeded runs, no failures, locally and in nightly CI from a random seed |
 | In the test suite | 10,000 seeded runs |
-| Mutant catch rate | 18 of 18 |
-| Shrunk regressions | 18 |
+| Mutant catch rate | 19 of 19 |
+| Shrunk regressions | 19 |
 | Bugs found in the correct code | 3, all since fixed ([details](docs/walkthroughs/m2.md)) |
 
 ## What Datasync does that shapes this design
@@ -88,11 +88,11 @@ What Leeway cannot guarantee is as important as what it can.
 - **A device that never returns still holds its lease.** That quota is stranded until an admin writes it off, and if the device was only offline, its spends can then break the rule. They are reported, not hidden ([ADR-0005](docs/DECISIONS.md)).
 - **A hybrid logical clock limits the damage from clock skew.** It cannot know which of two concurrent edits a person meant to win.
 - **Only SQLite with one server process is tested.** Datasync's own docs advise against SQLite for production services, so **Leeway is not ready for production servers** ([ADR-0003](docs/DECISIONS.md)).
-- **There is no device authentication.** A device is whoever it claims to be, so an application must authenticate devices, or one could spend from another's lease.
+- **Authentication is a hook you must fill in.** The server will not start until you choose. It takes an identity from your app, and has no per-entity access control. The GateKeeper demo runs with it off.
 - **A modified client can cheat.** The offline guarantee assumes the wallet code runs as written. A dishonest device shows up as an overdraft.
-- **Nothing is pruned.** The operation table, outbox, and set tombstones grow without limit.
-- **A device's provisional spends are not first come, first served.** They reach the server in arbitrary order.
-- **Deleting entities is not implemented,** and there is no operation spanning several entities.
+- **Some state grows without limit.** Operations can be pruned safely, but set tombstones and counter entries cannot.
+- **Provisional spends are first come, first served within a device only.** Two gates race, in the order they reconnect.
+- **Delete wins, with no undo,** and there is no operation spanning several entities.
 
 ## Repository
 

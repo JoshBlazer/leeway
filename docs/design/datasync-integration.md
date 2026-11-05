@@ -138,4 +138,4 @@ The maintainer also fixed #579, in [PR #582](https://github.com/CommunityToolkit
 1. **Moving ops into the Datasync queue.** Solved: a spend commits to a `[DoNotSynchronize]` outbox with `addToQueue: false`, and sync copies
    outbox rows into the queued op table just before pushing. Tested by `A_spend_completes_while_a_push_is_stuck_on_the_network`.
 2. **Reading a row while its ops are in flight.** Solved: see "Local view" in `escrow-protocol.md` and "settling deltas" in `merge-semantics.md`.
-3. **Op table growth.** **Still open.** The server, and each device's outbox, keep every operation forever. A retention policy has to keep replays harmless.
+3. **Op table growth.** Solved in `hardening.md`, using what each device reports about what it has been told.

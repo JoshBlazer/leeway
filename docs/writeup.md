@@ -1,7 +1,5 @@
 # Business rules that hold, even without signal
 
-> **Draft for the maintainer's review. Not published anywhere.**
-
 A venue has a gate with bad signal, and a stand that holds 500 people. Two staff scan tickets on tablets that can't reach the server. How do you make sure the stand doesn't overfill?
 
 You can't check with the server, because you can't reach it. Letting both gates decide on their own means they can both let in the last person. Most offline frameworks leave this to you, and resolve the fallout afterwards, by which point 503 people are in a stand that holds 500.
@@ -68,11 +66,11 @@ The second one shaped the design. Instead of merging rows on the client, a Leewa
 Leeway isn't ready for production, and I'd rather say so here than have you find out later.
 
 - **Only SQLite with one server process is tested**, and Datasync itself advises against SQLite for production servers.
-- **There is no device authentication.** A device is whoever it says it is.
+- **Authentication is a hook you fill in.** The server won't start until you decide, but it takes an identity from your app rather than issuing credentials.
 - **A modified client can cheat.** The offline guarantee assumes the wallet code runs as written. Cheating shows up as an overdraft, after the fact.
 - **A device that never comes back keeps its lease** until an admin writes it off. If it was only offline, its spends can then break the limit, and they are reported.
-- **Nothing is pruned**, so operation logs grow forever.
-- **The tests can miss things.** 400,000 clean simulator runs don't prove there are no bugs, and the simulator tests a model of the transport, not the adapters.
+- **Some state grows forever.** Operation logs can be pruned safely, but set tombstones can't yet, because a device might stay offline indefinitely.
+- **The tests can miss things.** Hundreds of thousands of clean simulator runs don't prove there are no bugs, and the simulator tests a model of the transport, not the adapters.
 
 ## Try it
 

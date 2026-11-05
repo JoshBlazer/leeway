@@ -102,9 +102,27 @@ The maintainer asked for M1 to M4 in one run, so there were no review stops betw
 
 **Upstream:** #578, #579, and #596 are all fixed by the maintainer (PRs #581, #582, #599). None is released yet, and we stay pinned at 10.1.2. The maintainer has said they will try to release 10.2.0 soon.
 
-**State:** all six milestones are met. Work is on branch `m6`, on a PR awaiting review. **The write-up has not been published anywhere, and needs the maintainer's review.**
-
-**Next:** merge on the maintainer's word. Then upgrade Datasync when a release includes the fixes, following "When upgrading" in the integration map. After that, the "before real use" list in the roadmap: authentication first.
+**State:** all six milestones are met and merged (PR #4).
 
 **Simulation metrics:** longest run 200,000 locally, and 200,000 in nightly CI from a random seed, no failures; mutant catch rate 18 of 18; shrunk regressions 18.
+
+## 2026-11-05: Session 2, continued, hardening
+
+The maintainer said to do all of: merge M6, approve the write-up, and carry on with the next work.
+
+**Done**
+
+- Merged PR #4, and removed the write-up's draft banner. It lives in this repository only. Nothing was posted elsewhere.
+- Device authentication, retention, discarding refused operations, entity deletion, and first-come ordering within a device. See `docs/walkthroughs/hardening.md`, ADR-0017, and ADR-0018.
+
+**Not done, and why**
+
+- **Datasync 10.2.0:** not released as of 2026-11-05. Upgrade when it ships, following "When upgrading" in the integration map.
+- **Other server databases:** hard constraint 4 says SQLite only. This needs the maintainer's decision.
+
+**State:** on branch `m7-hardening`, on a PR awaiting review. Not merged.
+
+**Next:** merge on the maintainer's word, then the upgrade. After that, per-entity access control, tombstone compaction, and a real pilot.
+
+**Simulation metrics:** longest run 200,000 locally, and 200,000 in nightly CI from a random seed, no failures; mutant catch rate 19 of 19; shrunk regressions 19.
 

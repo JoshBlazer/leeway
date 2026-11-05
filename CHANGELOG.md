@@ -14,5 +14,6 @@ No packages have been published.
 - `scripts/package-check.py`: checks the real NuGet packages from an outside project.
 - Solution scaffold, CI workflow, and project documentation.
 - GateKeeper demo: server, dashboard, and Avalonia desktop app, using Leeway through its public API (M6). It replaces the M0 spike.
-- A draft write-up in `docs/writeup.md`.
+- A write-up in `docs/writeup.md`.
+- Device authentication, which is a required decision at startup, plus retention, discarding refused operations, entity deletion, and first-come ordering within a device.
 - Characterization tests of Datasync 10.1.2 and the extension-point map in `docs/design/datasync-integration.md`.

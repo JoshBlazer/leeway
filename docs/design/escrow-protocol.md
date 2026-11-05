@@ -84,10 +84,10 @@ Velocity-based rebalancing is a later layer.
 - **Write-off can break the rule.** An admin writing off a device returns its holding to the pool (ADR-0005). If the device was only offline, its later spends cannot be funded. They are confirmed on the device, so real usage may exceed the limit. The server records this as `Overdraft`, which is reported rather than hidden.
 - **Stranded quota.** A lost device holds its lease until written off, so a venue can show capacity nobody can use.
 - **Provisional means provisional.** A person at a gate told "provisional" may later be rejected.
-- **No authentication.** `Device` is whatever the client claims. An app must authenticate devices, otherwise a client can spend from another's lease.
+- **Authentication is the application's.** The server requires a decision and enforces it (`hardening.md`), but it takes the identity from the app.
 - **A malicious or modified client is out of scope.** The guarantee assumes the wallet code runs as written. A dishonest device shows up as an overdraft.
 - **SQLite with one server process.** The write gate is in-process, and only this setup is tested (ADR-0003, ADR-0013).
-- **A rejected operation stays queued.** If the server refuses an operation outright, for example an unknown resource, it is retried on every push and reported as `SyncState.Failed`. There is no way yet to discard one. It does not block pulls.
+- **A rejected operation stays queued until discarded.** If the server refuses an operation outright, it is retried on every push and reported as `SyncState.Failed`. `DiscardRefusedAsync` removes it (`hardening.md`). It does not block pulls.
 - **Grants need a connection.** A device with no lease and no signal can only make provisional spends, so it should lease ahead of time.
 - **Local write speed is only roughly measured,** at about 8 to 19 ms a write, with SQLite pooling on. See `docs/walkthroughs/m6.md`. There is no benchmark suite.
-- **Provisional spends are not first come, first served.** A device's operations reach the server in arbitrary order.
+- **Provisional spends are first come, first served only within a device** (ADR-0018).

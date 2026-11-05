@@ -12,6 +12,8 @@ Each milestone ends with an exit check, `docs/walkthroughs/mN.md`, and a review 
 | M5 | Generator and analyzer | Snapshot tests; diagnostics and code fixes tested | **Done** |
 | M6 | GateKeeper demo and launch | Published README demo and walkthrough | Exit check met. The write-up is an unpublished draft |
 
-**Before real use:** device authentication, server databases other than SQLite, retention, a discard path for refused operations, entity deletion, and first-come ordering for provisional spends. These matter more than any later layer.
+**Before real use.** Done: device authentication, retention of operations, discarding refused operations, entity deletion, and first-come ordering within a device (`docs/walkthroughs/hardening.md`).
+
+Still needed: testing server databases other than SQLite, which **hard constraint 4 currently rules out, so that is the maintainer's decision**; upgrading to Datasync 10.2.0 when it ships; per-entity access control; compacting set tombstones; and a real pilot.
 
 **Later layers:** MAUI Android client, velocity-based rebalancing, more invariant types.

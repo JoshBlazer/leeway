@@ -26,7 +26,8 @@ powershell -ExecutionPolicy Bypass -File scripts/m6-demo.ps1    # Windows, after
 python scripts/make-demo-gif.py                                 # Rebuilds the README's GIF
 dotnet run --project mutants/Leeway.Mutants -c Release -- catch
 dotnet run --project mutants/Leeway.Mutants -c Release -- soak 10000 1
-python scripts/adapter-sabotage.py                              # Clean tree. Slow: about 20 minutes
+python scripts/adapter-sabotage.py                              # Clean tree. Slow: about an hour
+python scripts/adapter-sabotage.py --hardening-only             # Much faster
 python scripts/package-check.py                                 # Real packages, in an outside project
 ```
 
