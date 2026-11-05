@@ -82,11 +82,9 @@ public class M6ExitCheckTests
 
         Assert.Contains(a.ScanLines, line => line.StartsWith("T-1005: admitted", StringComparison.Ordinal));
 
-        // One of gate B's two provisional scans fits. Which one is arbitrary: a device's operations are not
-        // delivered in order, so this is not first come, first served. See docs/design/gatekeeper.md.
-        string[] provisional = b.ScanLines.Where(line => line.StartsWith("T-1009", StringComparison.Ordinal) || line.StartsWith("T-1010", StringComparison.Ordinal)).ToArray();
-        Assert.Single(provisional, line => line.EndsWith("admitted", StringComparison.Ordinal));
-        Assert.Single(provisional, line => line.EndsWith("turned away", StringComparison.Ordinal));
+        // First come, first served within a gate: T-1009 was scanned first, so it gets the last place.
+        Assert.Contains("T-1009: admitted", b.ScanLines);
+        Assert.Contains("T-1010: turned away", b.ScanLines);
 
         // The rule held, and the duplicate is flagged at both gates and on the dashboard.
         JsonElement state = await StateAsync(server);

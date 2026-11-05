@@ -54,6 +54,8 @@ public static class Simulator
         private readonly Dictionary<string, long> leaseStamps = [];
         private readonly Dictionary<string, OperationOutcome> applied = [];
         private readonly Dictionary<string, int> applyCounts = [];
+        private readonly Dictionary<string, Operation> appliedOps = [];
+        private readonly Dictionary<string, long> settledBelow = [];
         private readonly Dictionary<string, long> appliedStamps = [];
 
         // Virtual time. It moves only on Advance, so same-millisecond stamps are the norm (C19).
@@ -122,6 +124,7 @@ public static class Simulator
                 case EventType.Skew: device.Skew += e.Value; break;
                 case EventType.Advance: this.now += Math.Abs(e.Value); break;
                 case EventType.WriteOff: WriteOff(device); break;
+                case EventType.Prune: Prune(); break;
                 default: throw new InvalidOperationException($"Unknown event {e.Type}.");
             }
         }
@@ -247,6 +250,20 @@ public static class Simulator
             }
         }
 
+        /// <summary>Retention: forgets applied operations, which is only safe if the device will never send them again.</summary>
+        private void Prune()
+        {
+            foreach ((string id, Operation op) in this.appliedOps.ToList())
+            {
+                if (this.parts.MayPrune(op.Sequence, this.settledBelow.GetValueOrDefault(op.Device)))
+                {
+                    this.applied.Remove(id);
+                    this.appliedOps.Remove(id);
+                    this.stats = this.stats with { Pruned = this.stats.Pruned + 1 };
+                }
+            }
+        }
+
         private void WriteOff(Device device)
         {
             this.ledger = this.ledger.WriteOff(device.Name);
@@ -361,6 +378,8 @@ public static class Simulator
             }
 
             this.applied[op.Id] = outcome;
+            this.appliedOps[op.Id] = op;
+            this.settledBelow[op.Device] = Math.Max(this.settledBelow.GetValueOrDefault(op.Device), op.SettledBelow);
             return outcome;
         }
 
@@ -600,7 +619,8 @@ public static class ScheduleGenerator
                 < 92 => new SimEvent(EventType.Heal, device),
                 < 94 => new SimEvent(EventType.Crash, device),
                 < 96 => new SimEvent(EventType.Skew, device, PickSkew(random)),
-                < 99 => new SimEvent(EventType.Advance, 0, random.Next(0, 3) == 0 ? random.Next(1, 600_000) : random.Next(0, 3)),
+                < 98 => new SimEvent(EventType.Advance, 0, random.Next(0, 3) == 0 ? random.Next(1, 600_000) : random.Next(0, 3)),
+                < 99 => new SimEvent(EventType.Prune),
                 _ => new SimEvent(EventType.WriteOff, device),
             });
         }

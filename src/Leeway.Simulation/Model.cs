@@ -22,6 +22,7 @@ public enum EventType
     Skew,
     Advance,
     WriteOff,
+    Prune,
 }
 
 /// <summary>What goes wrong during a push or pull. See docs/design/simulation.md for the evidence behind each.</summary>
@@ -75,6 +76,9 @@ public sealed record ProtocolParts
 
     public bool ServerDedupes { get; init; } = true;
 
+    /// <summary>Whether pruning may delete a record of this sequence, given how far the device says it is settled.</summary>
+    public Func<long, long, bool> MayPrune { get; init; } = (sequence, settledBelow) => sequence < settledBelow;
+
     public bool TrustsPushResult { get; init; }
 
     public bool SequenceSurvivesCrash { get; init; } = true;
@@ -94,6 +98,7 @@ public sealed record SimStats
     public int Overdrafts { get; init; }
     public int DriftCorrections { get; init; }
     public int RegistersWritten { get; init; }
+    public int Pruned { get; init; }
 
     public SimStats Plus(SimStats o) => new()
     {
@@ -107,6 +112,7 @@ public sealed record SimStats
         Overdrafts = Overdrafts + o.Overdrafts,
         DriftCorrections = DriftCorrections + o.DriftCorrections,
         RegistersWritten = RegistersWritten + o.RegistersWritten,
+        Pruned = Pruned + o.Pruned,
     };
 }
 

@@ -75,6 +75,7 @@ public sealed record MergeField(string Name, FieldKind Kind, Type ValueType, Fun
 public sealed class MergeSchema
 {
     private const string EscrowRegisterPrefix = "$escrow:";
+    private const string DeletedRegister = "$deleted";
     private static readonly ConcurrentDictionary<Type, MergeSchema> Registered = new();
     private static readonly ConcurrentDictionary<Type, MergeSchema> Reflected = new();
 
@@ -233,6 +234,16 @@ public sealed class MergeSchema
             }
         }
     }
+
+    /// <summary>Builds a delta that deletes the entity. Delete wins: nothing restores it.</summary>
+    /// <param name="stamp">The stamp.</param>
+    /// <returns>The delta.</returns>
+    public static MergeDocument DeleteDelta(HybridTimestamp stamp) => MergeDocument.Empty.WithRegister(DeletedRegister, new LwwRegister("true", stamp));
+
+    /// <summary>Whether a document says the entity is deleted.</summary>
+    /// <param name="document">The document.</param>
+    /// <returns>True if deleted.</returns>
+    public static bool IsDeleted(MergeDocument document) => document.Registers.ContainsKey(DeletedRegister);
 
     /// <summary>Records the server's remaining quantity in a document, so that a local view can always be recomputed from it.</summary>
     /// <param name="document">The document.</param>

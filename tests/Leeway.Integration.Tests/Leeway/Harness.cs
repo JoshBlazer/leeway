@@ -1,8 +1,10 @@
+using System.Net;
 using Leeway.Core;
 using Leeway.Datasync.Client;
 using Leeway.Datasync.Server;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -45,10 +47,10 @@ public class TestServerDb(DbContextOptions<TestServerDb> options) : DbContext(op
 public class TestOperationsController(TestServerDb db, LeewayAuthority<TestServerDb> authority) : LeewayOperationsController<TestServerDb>(db, authority);
 
 [Route("tables/leewayleases")]
-public class TestLeasesController(TestServerDb db) : LeewayLeasesController<TestServerDb>(db);
+public class TestLeasesController(TestServerDb db, LeewayAuthority<TestServerDb> authority) : LeewayLeasesController<TestServerDb>(db, authority);
 
 [Route("tables/zone")]
-public class TestZonesController(TestServerDb db) : LeewayEntityController<ServerZone, TestServerDb>(db);
+public class TestZonesController(TestServerDb db, LeewayAuthority<TestServerDb> authority) : LeewayEntityController<ServerZone, TestServerDb>(db, authority);
 
 /// <summary>A clock tests can set, so that same-millisecond stamps and skew are deterministic.</summary>
 public sealed class TestClock(long startMs = 1_800_000_000_000) : TimeProvider
@@ -75,7 +77,7 @@ public sealed class TestServer : IAsyncDisposable
 
     public TestClock Clock { get; }
 
-    public static async Task<TestServer> StartAsync(int capacity = 25)
+    public static async Task<TestServer> StartAsync(int capacity = 25, Func<HttpContext, string?>? authenticate = null)
     {
         string directory = Directory.CreateTempSubdirectory("leeway-it-").FullName;
         TestClock clock = new();
@@ -91,6 +93,8 @@ public sealed class TestServer : IAsyncDisposable
         {
             o.Entity<ServerZone>("Zone");
             o.TimeProvider = clock;
+            o.AuthenticateDevice = authenticate;
+            o.AllowUnauthenticatedDevices = authenticate is null;
         });
 
         WebApplication app = builder.Build();
@@ -182,6 +186,9 @@ public sealed class NetworkFault : DelegatingHandler
 
     public Func<HttpRequestMessage, Task>? BeforeSend { get; set; }
 
+    /// <summary>The server is not reached, and every push gets this status.</summary>
+    public int? ReplacePostStatus { get; set; }
+
     protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
     {
         if (Offline)
@@ -204,6 +211,11 @@ public sealed class NetworkFault : DelegatingHandler
         if (BeforeSend is not null)
         {
             await BeforeSend(request);
+        }
+
+        if (ReplacePostStatus is { } status && request.Method == HttpMethod.Post)
+        {
+            return new HttpResponseMessage((HttpStatusCode)status) { RequestMessage = request, Content = new StringContent(string.Empty) };
         }
 
         HttpResponseMessage response = await base.SendAsync(request, cancellationToken);

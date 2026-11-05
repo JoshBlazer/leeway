@@ -80,6 +80,7 @@ public class SimulatorTests
         Assert.True(total.Overdrafts > 0);
         Assert.True(total.DriftCorrections > 50);
         Assert.True(total.RegistersWritten > 500);
+        Assert.True(total.Pruned > 50);
     }
 
     [Fact]
@@ -124,6 +125,22 @@ public class SimulatorTests
             Assert.True(correct.Passed, $"{file}: {string.Join("; ", correct.Violations)}");
             Assert.False(Simulator.Run(schedule, mutant.Parts).Passed, $"{file} no longer catches {saved.Mutant}.");
         }
+    }
+
+    /// <summary>The risk in retention, directly: a prune between a lost response and its retry.</summary>
+    [Fact]
+    public void A_prune_cannot_make_a_retry_apply_twice()
+    {
+        Schedule schedule = new(1, 10, [
+            new SimEvent(EventType.CounterAdd, Value: 1),
+            new SimEvent(EventType.Push, Fault: Fault.ResponseLost),
+            new SimEvent(EventType.Prune),
+            new SimEvent(EventType.CounterAdd, Value: 1),
+            new SimEvent(EventType.Prune),
+        ]);
+
+        Assert.True(Simulator.Run(schedule).Passed);
+        Assert.False(Simulator.Run(schedule, MutantCorpus.All.Single(m => m.Name == "PruneIgnoresAcknowledgements").Parts).Passed);
     }
 
     [Fact]

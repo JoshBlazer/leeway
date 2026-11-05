@@ -1,0 +1,5 @@
+{
+  "Mutant": "PruneIgnoresAcknowledgements",
+  "Violation": "P3: d1-1 was applied 2 times.",
+  "Schedule": "{\u0022Devices\u0022:5,\u0022Total\u0022:59,\u0022Events\u0022:[{\u0022Type\u0022:\u0022CounterAdd\u0022,\u0022Device\u0022:1,\u0022Value\u0022:-5,\u0022Fault\u0022:\u0022None\u0022},{\u0022Type\u0022:\u0022Push\u0022,\u0022Device\u0022:1,\u0022Value\u0022:1776544207,\u0022Fault\u0022:\u0022TimeoutAfterApply\u0022},{\u0022Type\u0022:\u0022Prune\u0022,\u0022Device\u0022:0,\u0022Value\u0022:0,\u0022Fault\u0022:\u0022None\u0022}]}"
+}

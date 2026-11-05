@@ -7,6 +7,7 @@ using Leeway.Datasync.Server;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using OperationKind = Leeway.Core.OperationKind;
 
 namespace Leeway.Integration.Tests.Leeway;
 

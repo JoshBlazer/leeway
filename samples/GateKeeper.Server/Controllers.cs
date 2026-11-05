@@ -7,10 +7,10 @@ namespace GateKeeper.Server;
 public class OperationsController(GateKeeperDbContext db, LeewayAuthority<GateKeeperDbContext> authority) : LeewayOperationsController<GateKeeperDbContext>(db, authority);
 
 [Route("tables/leewayleases")]
-public class LeasesController(GateKeeperDbContext db) : LeewayLeasesController<GateKeeperDbContext>(db);
+public class LeasesController(GateKeeperDbContext db, LeewayAuthority<GateKeeperDbContext> authority) : LeewayLeasesController<GateKeeperDbContext>(db, authority);
 
 [Route("tables/zone")]
-public class ZonesController(GateKeeperDbContext db) : LeewayEntityController<Zone, GateKeeperDbContext>(db);
+public class ZonesController(GateKeeperDbContext db, LeewayAuthority<GateKeeperDbContext> authority) : LeewayEntityController<Zone, GateKeeperDbContext>(db, authority);
 
 [Route("tables/ticket")]
-public class TicketsController(GateKeeperDbContext db) : LeewayEntityController<Ticket, GateKeeperDbContext>(db);
+public class TicketsController(GateKeeperDbContext db, LeewayAuthority<GateKeeperDbContext> authority) : LeewayEntityController<Ticket, GateKeeperDbContext>(db, authority);

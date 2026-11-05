@@ -41,6 +41,14 @@ public enum SyncState
 /// <param name="RejectedOperations">Operations the server refused.</param>
 public sealed record SyncReport(SyncState State, int RejectedOperations = 0);
 
+/// <summary>An operation the server clearly refused, which will not succeed if retried.</summary>
+/// <param name="OperationId">The operation's ID.</param>
+/// <param name="Kind">What it does.</param>
+/// <param name="EntityType">The entity type.</param>
+/// <param name="EntityId">The entity ID.</param>
+/// <param name="StatusCode">The HTTP status the server gave.</param>
+public sealed record RefusedOperation(string OperationId, OperationKind Kind, string EntityType, string EntityId, int StatusCode);
+
 /// <summary>A set of field changes to an entity, applied as one operation.</summary>
 /// <typeparam name="T">The entity type.</typeparam>
 public sealed class EntityEdit<T> where T : OfflineEntity
@@ -193,6 +201,138 @@ public sealed class LeewayClient<TContext>(Func<TContext> createContext, LeewayC
             return operationId;
         }, cancellationToken);
 
+    /// <summary>
+    /// Deletes an entity, here at once and on the server on the next sync. Delete wins over a concurrent edit,
+    /// and nothing restores it. Any ledger stays, so spends made offline are still recorded.
+    /// </summary>
+    /// <typeparam name="T">The entity type.</typeparam>
+    /// <param name="id">The entity ID.</param>
+    /// <param name="cancellationToken">A token to observe.</param>
+    /// <returns>The operation's ID.</returns>
+    public Task<string> DeleteAsync<T>(string id, CancellationToken cancellationToken = default) where T : OfflineEntity
+        => WriteAsync(async (context, tx) =>
+        {
+            string operationId = Guid.NewGuid().ToString("N");
+            (LeewayDeviceRow device, HybridTimestamp stamp) = await TickAsync(context, cancellationToken);
+            await RecordAsync(context, device, stamp, operationId, OperationKind.Merge, typeof(T).Name, id, MergeSchema.DeleteDelta(stamp), null, 0, cancellationToken);
+            if (await context.Set<T>().SingleOrDefaultAsync(x => x.Id == id, cancellationToken) is { } row)
+            {
+                context.Set<T>().Remove(row);
+            }
+
+            await context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false, cancellationToken);
+            return operationId;
+        }, cancellationToken);
+
+    /// <summary>Lists operations the server clearly refused. They are retried on every push until discarded.</summary>
+    /// <param name="cancellationToken">A token to observe.</param>
+    /// <returns>The refused operations.</returns>
+    public async Task<IReadOnlyList<RefusedOperation>> RefusedOperationsAsync(CancellationToken cancellationToken = default)
+    {
+        await using TContext context = createContext();
+        List<CommunityToolkit.Datasync.Client.Offline.DatasyncOperation> failed = await context.DatasyncOperationsQueue.AsNoTracking()
+            .Where(q => q.EntityType == typeof(LeewayOperationRow).FullName && q.State == CommunityToolkit.Datasync.Client.Offline.OperationState.Failed)
+            .ToListAsync(cancellationToken);
+
+        List<RefusedOperation> refused = [];
+        foreach (CommunityToolkit.Datasync.Client.Offline.DatasyncOperation row in failed.Where(q => IsClearRefusal(q.HttpStatusCode)))
+        {
+            LeewayOutboxRow? outbox = await context.LeewayOutbox.AsNoTracking().SingleOrDefaultAsync(x => x.Id == row.ItemId, cancellationToken);
+            if (outbox is not null)
+            {
+                Operation op = Operation.FromJson(outbox.Payload);
+                refused.Add(new RefusedOperation(op.Id, op.Kind, op.EntityType, op.EntityId, row.HttpStatusCode!.Value));
+            }
+        }
+
+        return refused;
+    }
+
+    /// <summary>
+    /// Discards a refused operation, and undoes its effect on the wallet. A discarded edit stays in the row's local view
+    /// until the server next changes that row, because a merged state cannot be un-merged.
+    /// </summary>
+    /// <param name="operationId">The operation's ID.</param>
+    /// <param name="cancellationToken">A token to observe.</param>
+    /// <returns>A task.</returns>
+    /// <exception cref="InvalidOperationException">It was not clearly refused. It may have been applied, so it must not be discarded.</exception>
+    public Task DiscardRefusedAsync(string operationId, CancellationToken cancellationToken = default)
+        => WriteAsync(async (context, tx) =>
+        {
+            CommunityToolkit.Datasync.Client.Offline.DatasyncOperation? queued = await context.DatasyncOperationsQueue.SingleOrDefaultAsync(q => q.ItemId == operationId, cancellationToken);
+            if (queued is null || queued.State != CommunityToolkit.Datasync.Client.Offline.OperationState.Failed || !IsClearRefusal(queued.HttpStatusCode))
+            {
+                throw new InvalidOperationException($"Operation {operationId} was not clearly refused. It may have been applied, so it cannot be discarded.");
+            }
+
+            LeewayOutboxRow outbox = await context.LeewayOutbox.SingleAsync(x => x.Id == operationId, cancellationToken);
+            Operation op = Operation.FromJson(outbox.Payload);
+            if (op.Resource is not null && op.Kind is OperationKind.Spend or OperationKind.ReturnLease)
+            {
+                LeewayWalletRow wallet = await context.LeewayWallets.SingleAsync(w => w.Resource == op.Resource, cancellationToken);
+                wallet.Spent -= op.Kind == OperationKind.Spend ? op.Amount : 0;
+                wallet.Returned -= op.Kind == OperationKind.ReturnLease ? op.Amount : 0;
+            }
+
+            outbox.State = OutboxState.Discarded;
+            context.DatasyncOperationsQueue.Remove(queued);
+            if (await context.LeewayOperations.SingleOrDefaultAsync(x => x.Id == operationId, cancellationToken) is { } row)
+            {
+                context.LeewayOperations.Remove(row);
+            }
+
+            await context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false, cancellationToken);
+            if (context.OfflineEntityTypes.FirstOrDefault(t => t.Name == op.EntityType) is { } type
+                && await context.FindAsync(type, [op.EntityId], cancellationToken) is OfflineEntity entity)
+            {
+                await ReprojectAsync(context, entity, cancellationToken);
+                await context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false, cancellationToken);
+            }
+
+            return true;
+        }, cancellationToken);
+
+    /// <summary>
+    /// Removes old acknowledged operations from this device's records. Unacknowledged ones, those a pulled row does not
+    /// include yet, and the latest few always stay. After this, the outcome of a removed operation can no longer be read.
+    /// </summary>
+    /// <param name="keepLatest">How many acknowledged operations to keep, so that recent outcomes can be read.</param>
+    /// <param name="cancellationToken">A token to observe.</param>
+    /// <returns>How many were removed.</returns>
+    public Task<int> PruneAsync(int keepLatest = 100, CancellationToken cancellationToken = default)
+        => WriteAsync(async (context, tx) =>
+        {
+            List<LeewayOutboxRow> finished = await context.LeewayOutbox
+                .Where(x => x.State == OutboxState.Acknowledged || x.State == OutboxState.Discarded)
+                .OrderByDescending(x => x.Sequence)
+                .Skip(keepLatest)
+                .ToListAsync(cancellationToken);
+
+            int removed = 0;
+            foreach (LeewayOutboxRow row in finished)
+            {
+                Type? type = context.OfflineEntityTypes.FirstOrDefault(t => t.Name == row.EntityType);
+                long stamp = type is not null && await context.FindAsync(type, [row.EntityId], cancellationToken) is OfflineEntity entity
+                    ? entity.UpdatedAt?.ToUnixTimeMilliseconds() ?? 0
+                    : long.MaxValue;
+                if (row.EntityStamp > stamp)
+                {
+                    continue;
+                }
+
+                context.LeewayOutbox.Remove(row);
+                if (await context.LeewayOperations.SingleOrDefaultAsync(x => x.Id == row.Id, cancellationToken) is { } copy)
+                {
+                    context.LeewayOperations.Remove(copy);
+                }
+
+                removed++;
+            }
+
+            await context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: false, cancellationToken);
+            return removed;
+        }, cancellationToken);
+
     /// <summary>Spends from an escrowed field. Within the lease, it is confirmed with no signal. Beyond it, it is provisional.</summary>
     /// <typeparam name="T">The entity type.</typeparam>
     /// <param name="id">The entity ID.</param>
@@ -312,7 +452,7 @@ public sealed class LeewayClient<TContext>(Func<TContext> createContext, LeewayC
     public async Task<int> PendingCountAsync(CancellationToken cancellationToken = default)
     {
         await using TContext context = createContext();
-        return await context.LeewayOutbox.CountAsync(x => x.State != OutboxState.Acknowledged, cancellationToken);
+        return await context.LeewayOutbox.CountAsync(x => x.State != OutboxState.Acknowledged && x.State != OutboxState.Discarded, cancellationToken);
     }
 
     /// <summary>Sends operations, then pulls. Never throws for network trouble: it reports it.</summary>
@@ -370,10 +510,28 @@ public sealed class LeewayClient<TContext>(Func<TContext> createContext, LeewayC
         }
     }
 
+    /// <summary>A 4xx that is not a conflict or a timeout, so the server cannot have applied it, and a retry cannot help.</summary>
+    private static bool IsClearRefusal(int? status) => status is >= 400 and < 500 and not (408 or 409 or 412 or 425 or 429);
+
+    /// <summary>
+    /// Sends one operation at a time, oldest first, because Datasync's queue has no order of its own. It stops at the
+    /// first with no answer, so that a device's spends compete first come, first served. See docs/design/hardening.md.
+    /// </summary>
     private async Task<SyncReport> PushCoreAsync(CancellationToken cancellationToken)
     {
-        await FlushOutboxAsync(cancellationToken);
+        while (true)
+        {
+            bool more = await FlushNextAsync(cancellationToken);
+            SyncReport report = await PushOnceAsync(cancellationToken);
+            if (report.State == SyncState.Offline || !more)
+            {
+                return report;
+            }
+        }
+    }
 
+    private async Task<SyncReport> PushOnceAsync(CancellationToken cancellationToken)
+    {
         bool unreachable = false;
         await using (TContext context = createContext())
         {
@@ -406,25 +564,31 @@ public sealed class LeewayClient<TContext>(Func<TContext> createContext, LeewayC
     }
 
     /// <summary>
-    /// Copies operations into the Datasync queue just before a push. This is the only queued write, and it may wait for
-    /// the process-wide sync lock (probe C23), so it holds no gate that a spend needs.
+    /// Copies the oldest operation into the Datasync queue, unless an earlier one is still waiting for an answer. This is
+    /// the only queued write, and it may wait for the process-wide sync lock (probe C23), so it holds no gate that a spend needs.
     /// </summary>
-    private async Task FlushOutboxAsync(CancellationToken cancellationToken)
+    /// <returns>Whether there may be more to send after this push.</returns>
+    private async Task<bool> FlushNextAsync(CancellationToken cancellationToken)
     {
         await using TContext context = createContext();
-        List<LeewayOutboxRow> pending = await context.LeewayOutbox.Where(x => x.State == OutboxState.Pending).OrderBy(x => x.Sequence).ToListAsync(cancellationToken);
-        if (pending.Count == 0)
+        bool waiting = await context.DatasyncOperationsQueue.AnyAsync(
+            q => q.EntityType == typeof(LeewayOperationRow).FullName && q.State == CommunityToolkit.Datasync.Client.Offline.OperationState.Pending,
+            cancellationToken);
+        LeewayOutboxRow? next = await context.LeewayOutbox.Where(x => x.State == OutboxState.Pending).OrderBy(x => x.Sequence).FirstOrDefaultAsync(cancellationToken);
+        if (waiting)
         {
-            return;
+            return next is not null;
         }
 
-        foreach (LeewayOutboxRow row in pending)
+        if (next is null)
         {
-            context.LeewayOperations.Add(new LeewayOperationRow { Id = row.Id, Device = options.DeviceId, Payload = row.Payload });
-            row.State = OutboxState.Queued;
+            return false;
         }
 
+        context.LeewayOperations.Add(new LeewayOperationRow { Id = next.Id, Device = options.DeviceId, Payload = next.Payload });
+        next.State = OutboxState.Queued;
         await context.SaveChangesAsync(acceptAllChangesOnSuccess: true, addToQueue: true, cancellationToken);
+        return true;
     }
 
     private async Task RecordOutcomesAsync(CancellationToken cancellationToken)
@@ -556,7 +720,7 @@ public sealed class LeewayClient<TContext>(Func<TContext> createContext, LeewayC
         long rowStamp = row.UpdatedAt?.ToUnixTimeMilliseconds() ?? 0;
 
         List<LeewayOutboxRow> saved = await context.LeewayOutbox.AsNoTracking()
-            .Where(x => x.EntityType == entityType && x.EntityId == row.Id && (x.State != OutboxState.Acknowledged || x.EntityStamp > rowStamp))
+            .Where(x => x.EntityType == entityType && x.EntityId == row.Id && x.State != OutboxState.Discarded && (x.State != OutboxState.Acknowledged || x.EntityStamp > rowStamp))
             .ToListAsync(cancellationToken);
         IEnumerable<LeewayOutboxRow> added = context.ChangeTracker.Entries<LeewayOutboxRow>()
             .Where(e => e.State == EntityState.Added && e.Entity.EntityType == entityType && e.Entity.EntityId == row.Id)
@@ -625,7 +789,7 @@ public sealed class LeewayClient<TContext>(Func<TContext> createContext, LeewayC
     private async Task RecordAsync(TContext context, LeewayDeviceRow device, HybridTimestamp stamp, string operationId, OperationKind kind, string entityType, string entityId, MergeDocument? delta, string? resource, long amount, CancellationToken cancellationToken)
     {
         long sequence = ++device.Sequence;
-        long? oldest = await context.LeewayOutbox.Where(x => x.State != OutboxState.Acknowledged).MinAsync(x => (long?)x.Sequence, cancellationToken);
+        long? oldest = await context.LeewayOutbox.Where(x => x.State != OutboxState.Acknowledged && x.State != OutboxState.Discarded).MinAsync(x => (long?)x.Sequence, cancellationToken);
         Operation op = new(
             operationId, options.DeviceId, sequence, stamp,
             new HybridTimestamp(device.ObservedPhysical, device.ObservedLogical, device.ObservedReplica),

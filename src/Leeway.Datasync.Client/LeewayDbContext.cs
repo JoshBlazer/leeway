@@ -90,6 +90,9 @@ public enum OutboxState
 
     /// <summary>The server has answered.</summary>
     Acknowledged,
+
+    /// <summary>The server refused it, and the application discarded it.</summary>
+    Discarded,
 }
 
 /// <summary>This device's durable record of its operations. Never synchronized.</summary>

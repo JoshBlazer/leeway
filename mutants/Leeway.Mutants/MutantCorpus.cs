@@ -121,6 +121,9 @@ public static class MutantCorpus
         new("NoDeduplication", "The server applies an operation every time it arrives.",
             new ProtocolParts { ServerDedupes = false }),
 
+        new("PruneIgnoresAcknowledgements", "Retention deletes every record, including ones a device may still retry, so a retry applies twice.",
+            new ProtocolParts { MayPrune = (_, _) => true }),
+
         new("TrustsPushResult", "M0 finding C24: a client believes PushResult.IsSuccessful and drops timed-out operations.",
             new ProtocolParts { TrustsPushResult = true }),
 

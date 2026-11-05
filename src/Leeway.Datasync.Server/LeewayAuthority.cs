@@ -25,6 +25,15 @@ public sealed class LeewayServerOptions
     /// <summary>Chooses a resource's allocation policy. By default, a fixed lease of the size in the field's [Escrow] attribute.</summary>
     public Func<MergeField, IAllocationPolicy> AllocationPolicy { get; set; } = field => new FixedLease(field.Lease);
 
+    /// <summary>
+    /// Gets the calling device's identity from the request, or null if it is not authenticated. Leeway takes an
+    /// identity from the application, and does not issue or check credentials itself.
+    /// </summary>
+    public Func<HttpContext, string?>? AuthenticateDevice { get; set; }
+
+    /// <summary>Explicitly allows any client to claim to be any device. For samples and tests, never production.</summary>
+    public bool AllowUnauthenticatedDevices { get; set; }
+
     /// <summary>Registers an entity type.</summary>
     /// <typeparam name="T">The server entity class.</typeparam>
     /// <param name="name">The name operations use for it, which is the client class's name. By default, this class's name.</param>
@@ -62,6 +71,13 @@ public static class LeewayServiceCollectionExtensions
     {
         LeewayServerOptions options = new();
         configure(options);
+        if (options.AuthenticateDevice is null && !options.AllowUnauthenticatedDevices)
+        {
+            throw new InvalidOperationException(
+                "Leeway needs a decision about device authentication. Set AuthenticateDevice, or set AllowUnauthenticatedDevices if this is a sample or test.");
+        }
+
+        services.AddHttpContextAccessor();
         services.AddSingleton(options);
         services.AddSingleton<LeewayWriteGate>();
         services.AddScoped<LeewayAuthority<TContext>>();
@@ -75,9 +91,15 @@ public static class LeewayServiceCollectionExtensions
 /// the simulator tests. See docs/design/escrow-protocol.md and ADR-0012.
 /// </summary>
 /// <typeparam name="TContext">The application's DbContext.</typeparam>
-public sealed class LeewayAuthority<TContext>(TContext context, LeewayServerOptions options, LeewayWriteGate gate) where TContext : DbContext
+public sealed class LeewayAuthority<TContext>(TContext context, LeewayServerOptions options, LeewayWriteGate gate, IHttpContextAccessor http) where TContext : DbContext
 {
     private long Now => options.TimeProvider.GetUtcNow().ToUnixTimeMilliseconds();
+
+    /// <summary>Whether any client may claim to be any device.</summary>
+    internal bool IsOpen => options.AuthenticateDevice is null;
+
+    /// <summary>The authenticated device, or null if there is none.</summary>
+    internal string? CurrentDevice => http.HttpContext is { } current ? options.AuthenticateDevice?.Invoke(current) : null;
 
     /// <summary>Creates an entity, along with a ledger for each escrowed field.</summary>
     /// <typeparam name="TEntity">The entity type.</typeparam>
@@ -147,6 +169,27 @@ public sealed class LeewayAuthority<TContext>(TContext context, LeewayServerOpti
         }, cancellationToken);
     }
 
+    /// <summary>
+    /// Deletes operations that their devices know were acknowledged. Those devices will never send them again, so no
+    /// replay can be applied twice. A device that has gone quiet keeps its operations until it returns.
+    /// </summary>
+    /// <param name="cancellationToken">A token to observe.</param>
+    /// <returns>How many were deleted.</returns>
+    public async Task<int> PruneOperationsAsync(CancellationToken cancellationToken = default)
+    {
+        int pruned = 0;
+        await InTransactionAsync(async () =>
+        {
+            foreach (LeewayDeviceProgressRow progress in await context.Set<LeewayDeviceProgressRow>().AsNoTracking().ToListAsync(cancellationToken))
+            {
+                pruned += await context.Set<LeewayOperationRow>()
+                    .Where(x => x.Device == progress.Device && x.Sequence < progress.SettledBelow)
+                    .ExecuteDeleteAsync(cancellationToken);
+            }
+        }, cancellationToken);
+        return pruned;
+    }
+
     /// <summary>Applies an incoming operation and records it, as one step. A duplicate gets a 409 with the stored row.</summary>
     /// <param name="row">The incoming row.</param>
     /// <param name="cancellationToken">A token to observe.</param>
@@ -169,6 +212,8 @@ public sealed class LeewayAuthority<TContext>(TContext context, LeewayServerOpti
                 ? await ApplyMergeAsync(op, authority, stamp, cancellationToken)
                 : await ApplyEscrowAsync(op, stamp, cancellationToken);
 
+            await RecordProgressAsync(op, cancellationToken);
+            row.Sequence = op.Sequence;
             row.OutcomeStatus = outcome.Status.ToString();
             row.OutcomeAmount = outcome.Amount;
             row.EntityStamp = entityStamp;
@@ -177,6 +222,19 @@ public sealed class LeewayAuthority<TContext>(TContext context, LeewayServerOpti
             context.Add(row);
             await context.SaveChangesAsync(cancellationToken);
         }, cancellationToken);
+    }
+
+    private async Task RecordProgressAsync(Operation op, CancellationToken cancellationToken)
+    {
+        LeewayDeviceProgressRow? progress = await context.Set<LeewayDeviceProgressRow>().SingleOrDefaultAsync(x => x.Device == op.Device, cancellationToken);
+        if (progress is null)
+        {
+            context.Add(new LeewayDeviceProgressRow { Device = op.Device, SettledBelow = op.SettledBelow });
+        }
+        else if (op.SettledBelow > progress.SettledBelow)
+        {
+            progress.SettledBelow = op.SettledBelow;
+        }
     }
 
     private static Operation Parse(LeewayOperationRow row)
@@ -220,6 +278,7 @@ public sealed class LeewayAuthority<TContext>(TContext context, LeewayServerOpti
 
         MergeDocument document = MergeDocument.FromJson(entity.LeewayState).Merge(op.Delta.WithRegisterStamps(canonical));
         MergeSchema.For(type).Project(document, entity);
+        entity.Deleted = MergeSchema.IsDeleted(document);
         Stamp(entity, document, stamp);
         return (new OperationOutcome(OutcomeStatus.Merged), stamp);
     }

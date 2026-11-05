@@ -23,6 +23,9 @@ public static class GateKeeperServerApp
         {
             options.Entity<Zone>();
             options.Entity<Ticket>();
+
+            // A demo. A real deployment must set AuthenticateDevice instead. See docs/design/hardening.md.
+            options.AllowUnauthenticatedDevices = true;
         });
 
         WebApplication app = builder.Build();

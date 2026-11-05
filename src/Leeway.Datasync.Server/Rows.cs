@@ -24,6 +24,9 @@ public class LeewayOperationRow : BaseEntityTableData
     [Required]
     public string Payload { get; set; } = string.Empty;
 
+    /// <summary>The device's sequence number, for retention. Set by the server.</summary>
+    public long Sequence { get; set; }
+
     /// <summary>What the server did. A replay returns this stored outcome.</summary>
     public string? OutcomeStatus { get; set; }
 
@@ -73,6 +76,17 @@ public class LeewayEscrowRow
     public string Field { get; set; } = string.Empty;
 }
 
+/// <summary>How far each device says it has been acknowledged, which is what makes pruning safe. Private to the server.</summary>
+public class LeewayDeviceProgressRow
+{
+    /// <summary>The device.</summary>
+    [Key]
+    public string Device { get; set; } = string.Empty;
+
+    /// <summary>The device has its answer for every sequence below this, so it will not send those again.</summary>
+    public long SettledBelow { get; set; }
+}
+
 /// <summary>Server-wide state: the last row stamp and stamp admission. Private to the server.</summary>
 public class LeewayAuthorityRow
 {
@@ -106,6 +120,7 @@ public static class LeewayModelBuilderExtensions
         Configure(modelBuilder.Entity<LeewayLeaseRow>());
         modelBuilder.Entity<LeewayEscrowRow>();
         modelBuilder.Entity<LeewayAuthorityRow>();
+        modelBuilder.Entity<LeewayDeviceProgressRow>();
         return modelBuilder;
     }
 
