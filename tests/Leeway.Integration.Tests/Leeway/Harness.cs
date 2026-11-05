@@ -176,6 +176,9 @@ public sealed class NetworkFault : DelegatingHandler
 
     public bool Hang { get; set; }
 
+    /// <summary>Only pushes time out, so that a pull cannot hide what a push reported.</summary>
+    public bool HangPosts { get; set; }
+
     public List<string> Requests { get; } = [];
 
     public Func<HttpRequestMessage, HttpResponseMessage, Task>? AfterSend { get; set; }
@@ -192,6 +195,12 @@ public sealed class NetworkFault : DelegatingHandler
         if (Hang)
         {
             await Task.Delay(Timeout.Infinite, cancellationToken);
+        }
+
+        if (HangPosts && request.Method == HttpMethod.Post)
+        {
+            await Task.Delay(50, cancellationToken);
+            throw new TaskCanceledException("Fails the way HttpClient.Timeout does. Probes C24 and C25 pin the real thing.");
         }
 
         Requests.Add($"{request.Method} {request.RequestUri!.AbsolutePath}");

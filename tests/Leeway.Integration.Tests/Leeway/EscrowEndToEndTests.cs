@@ -1,6 +1,7 @@
 using System.Net.Http.Json;
 using Leeway.Core;
 using Leeway.Datasync.Client;
+using Microsoft.EntityFrameworkCore;
 
 namespace Leeway.Integration.Tests.Leeway;
 
@@ -177,6 +178,65 @@ public class EscrowEndToEndTests
         Assert.Equal(SyncState.Synced, (await a.Client.SyncAsync()).State);
         Assert.Equal(0, await a.Client.PendingCountAsync());
         Assert.Equal(1, (await server.LedgerAsync()).Consumed);
+    }
+
+    /// <summary>
+    /// Probe C24 on its own. Pulls still work here, so only the queue check can show that the push did nothing.
+    /// A sabotage run proved the test above could not: its fault also failed the pull.
+    /// </summary>
+    [Fact]
+    public async Task A_push_that_times_out_is_reported_as_offline_even_when_pulls_work()
+    {
+        await using TestServer server = await TestServer.StartAsync(capacity: 10);
+        using Gate a = await Gate.OpenAsync(server, "gate-a");
+        await a.Client.EditAsync<Zone>("north", e => e.Add(z => z.CheckIns, 1));
+
+        a.Fault.HangPosts = true;
+        Assert.Equal(SyncState.Offline, (await a.Client.SyncAsync()).State);
+        Assert.Equal(1, await a.Client.PendingCountAsync());
+
+        a.Fault.HangPosts = false;
+        Assert.Equal(SyncState.Synced, (await a.Client.SyncAsync()).State);
+        Assert.Equal(1, (await server.ZoneAsync()).CheckIns);
+    }
+
+    /// <summary>An acknowledged spend must stay in the view until a pull includes it, or the next spend would forget it.</summary>
+    [Fact]
+    public async Task The_remaining_figure_keeps_an_acknowledged_spend_until_a_pull_includes_it()
+    {
+        await using TestServer server = await TestServer.StartAsync(capacity: 10);
+        using Gate a = await Gate.OpenAsync(server, "gate-a");
+        await a.Client.RequestLeaseAsync<Zone>("north", z => z.RemainingCapacity, 5);
+        await a.Client.SyncAsync();
+
+        await a.Client.TrySpendAsync<Zone>("north", z => z.RemainingCapacity, 1);
+        Assert.Equal(SyncState.Synced, (await a.Client.PushAsync()).State);
+        Assert.Equal(0, await a.Client.PendingCountAsync());
+
+        await a.Client.TrySpendAsync<Zone>("north", z => z.RemainingCapacity, 1);
+        Assert.Equal(8, (await a.ZoneAsync()).RemainingCapacity);
+
+        await a.Client.SyncAsync();
+        Assert.Equal(8, (await a.ZoneAsync()).RemainingCapacity);
+        Assert.Equal(8, (await server.ZoneAsync()).RemainingCapacity);
+    }
+
+    /// <summary>Without a resolver, a replay would be a stuck 409 (probe C15). This must end, and it must recover the outcome.</summary>
+    [Fact]
+    public async Task A_replayed_operation_after_a_lost_response_is_not_left_stuck_in_the_queue()
+    {
+        await using TestServer server = await TestServer.StartAsync(capacity: 10);
+        using Gate a = await Gate.OpenAsync(server, "gate-a");
+        string operation = await a.Client.EditAsync<Zone>("north", e => e.Add(z => z.CheckIns, 1));
+
+        a.Fault.AfterSend = (_, _) => throw new HttpRequestException("response lost");
+        Assert.Equal(SyncState.Offline, (await a.Client.PushAsync()).State);
+        a.Fault.AfterSend = null;
+
+        Assert.Equal(SyncState.Synced, (await a.Client.PushAsync()).State);
+        await using GateDb db = a.Client.CreateContext();
+        Assert.Empty(await db.DatasyncOperationsQueue.ToListAsync());
+        Assert.Equal(global::Leeway.Core.OutcomeStatus.Merged, (await a.Client.OutcomeOfAsync(operation))!.Status);
     }
 
     /// <summary>Probe C23: a spend must not wait for a push that is stuck on the network.</summary>

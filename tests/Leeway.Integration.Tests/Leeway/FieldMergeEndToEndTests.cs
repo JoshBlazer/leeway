@@ -159,6 +159,34 @@ public class FieldMergeEndToEndTests
         Assert.Equal("second, having seen first", (await fine.ZoneAsync()).Notes);
     }
 
+    /// <summary>
+    /// A value clamped at the drift limit is ahead of the server's clock. A write that saw it must still win, and only the
+    /// operation's Observed stamp can ensure that, because the writer's own stamp is clamped to the same limit.
+    /// </summary>
+    [Fact]
+    public async Task A_write_that_saw_a_value_at_the_drift_limit_still_beats_it()
+    {
+        await using TestServer server = await TestServer.StartAsync();
+        using Gate fast = await Gate.OpenAsync(server, "zzz-fast");
+        using Gate other = await Gate.OpenAsync(server, "aaa-other");
+        fast.Clock.Ms += 86_400_000;
+
+        // Several operations, so that the fast device's sequence is higher and would win a tie at the limit.
+        for (int i = 0; i < 5; i++)
+        {
+            await fast.Client.EditAsync<Zone>("north", e => e.Set(z => z.Notes, "from the future"));
+        }
+
+        await fast.Client.SyncAsync();
+        await other.Client.SyncAsync();
+        Assert.Equal("from the future", (await other.ZoneAsync()).Notes);
+
+        await other.Client.EditAsync<Zone>("north", e => e.Set(z => z.Notes, "having seen it"));
+        await other.Client.SyncAsync();
+
+        Assert.Equal("having seen it", (await server.ZoneAsync()).Notes);
+    }
+
     [Fact]
     public async Task A_device_with_a_fast_clock_cannot_win_every_merge()
     {
