@@ -1,6 +1,6 @@
 # Architecture (draft)
 
-Draft after M0. The data flow below follows ADR-0012, which is accepted but not yet built.
+Updated after M4. The data flow below follows ADR-0012, and it is built.
 
 ```
  ┌──────── Avalonia / MAUI app ────────┐          ┌────────── ASP.NET Core server ──────────┐
@@ -17,22 +17,23 @@ Draft after M0. The data flow below follows ADR-0012, which is accepted but not 
 
 | Project | Role | State |
 |---|---|---|
-| `Leeway.Core` | Pure logic: counters, sets, HLC registers, escrow ledger, op log, guarantee classes. No Datasync dependency | `GuaranteeClass` only |
-| `Leeway.Datasync.Client` | Captures operations, manages the wallet, exposes provisional status | Scaffold |
-| `Leeway.Datasync.Server` | Escrow authority, idempotent application, invariants | Scaffold |
+| `Leeway.Core` | Pure logic: counters, sets, HLC registers, stamp admission, escrow ledger, op log, schema, guarantee classes. No Datasync dependency | Built (M1) |
+| `Leeway.Datasync.Client` | Captures operations, manages the wallet, exposes provisional status | Built (M3, M4) |
+| `Leeway.Datasync.Server` | Escrow authority, idempotent application, invariants | Built (M3, M4) |
 | `Leeway.Generators` | Attributes to merge code | Scaffold (emits nothing) |
 | `Leeway.Analyzers` | Diagnostics and code fixes | Scaffold (reports nothing) |
-| `Leeway.Simulation` | Deterministic simulator | Scaffold |
-| `samples/GateKeeper.Server`, `.Desktop` | M0 spike: one entity, default resolver | Working |
+| `Leeway.Simulation` | Deterministic simulator | Built (M2) |
+| `mutants/Leeway.Mutants` | Mutation corpus, catch-rate and soak commands | Built (M2) |
+| `samples/GateKeeper.Server`, `.Desktop` | M0 spike: one entity, default resolver. **It does not use Leeway yet** | Working, due for rework in M6 |
 | `samples/GateKeeper.Dashboard` | Dashboard | Not created, due in M6 |
 
-## Data flow (ADR-0012, not yet built)
+## Data flow (ADR-0012)
 
-**Local write.** One SQLite transaction, with no network:
-record the op in a local log, update the wallet if escrowed, and advance the HLC. The UI shows `pulled row + unacknowledged ops`.
+**Local write.** One SQLite transaction, with no network and no Datasync lock:
+record the op in an outbox, update the wallet if escrowed, and advance the HLC. The row shows `pulled state + unsettled ops`.
 
 **Sync.**
-1. Push ops as inserts into an append-only table with client-generated IDs.
+1. Copy outbox rows into the queued op table, and push them as inserts with client-generated IDs.
 2. Treat a 409 as already applied (C14).
 3. Check the queue, because `PushResult` can report false success (C24).
 4. Pull projections. Entity rows are never pushed, so they cannot conflict (C06).
@@ -49,7 +50,8 @@ See `docs/design/datasync-integration.md`: the merged write is unconditional (C0
 |---|---|---|
 | Pure logic | xUnit, FsCheck | `tests/Leeway.Core.Tests`, `tests/Leeway.Property.Tests` |
 | Whole protocol under faults | Simulator with mutation corpus | `tests/Leeway.Simulation.Tests`, `mutants/` |
-| Datasync behaviour | Probes over real HTTP and SQLite | `tests/Leeway.Integration.Tests` |
+| Datasync behaviour | Probes over real HTTP and SQLite | `tests/Leeway.Integration.Tests/Datasync` |
+| Leeway over Datasync | End-to-end tests over real HTTP and SQLite, plus sabotage of each adapter protection | `tests/Leeway.Integration.Tests/Leeway`, `scripts/adapter-sabotage.py` |
 | Generator and analyzer | Verify, Roslyn test harness | `tests/Leeway.Generators.Tests`, `tests/Leeway.Analyzers.Tests` |
 | Full app | Headless window with real input, plus a live demo script | `tests/GateKeeper.Desktop.Tests`, `scripts/m0-demo.ps1` |
 

@@ -48,8 +48,31 @@ Read this first at the start of each session. Append at the end of each session.
 - Filed upstream [#578](https://github.com/CommunityToolkit/Datasync/issues/578) (timeout reports success) and [#579](https://github.com/CommunityToolkit/Datasync/issues/579) (resolver write loses updates). U3 to U7 are held.
 - Corrected the C19 scope: it is shown on millisecond-precision SQLite, and source suggests finer stores are not affected.
 
-**State:** the M0 exit check is met and CI is green. PR #1 is open, so `main` still holds only the initial commit until it is merged.
-
-**Next:** merge PR #1 on the maintainer's word. Then M1, starting with the HLC and merge design notes. Watch #578 and #579 for replies.
+**State:** the M0 exit check is met and CI is green. PR #1 was later merged by fast-forward on the maintainer's word.
 
 **Simulation metrics:** runs 0; mutant catch rate not measured; shrunk regressions 0.
+
+## 2026-11-05: Session 2, M1 to M4
+
+The maintainer asked for M1 to M4 in one run, so there were no review stops between them.
+
+**Done**
+
+- Design notes first: `hlc.md`, `merge-semantics.md`, `escrow-protocol.md`, `simulation.md`.
+- M1 `Leeway.Core`, M2 simulator and 18 mutants, M3 escrow end to end, M4 per-field merging.
+- `scripts/adapter-sabotage.py`, and a nightly soak workflow, which has not run yet because it needs to be on `main`.
+- ADR-0014 (stamp admission) and ADR-0015 (reflection and JSON sets, until the generator).
+
+**Key findings**
+
+- The simulator found 3 real bugs in the correct code, after all property tests were green. See `docs/walkthroughs/m2.md`.
+- Sabotage found 3 adapter protections no test really covered. See `docs/walkthroughs/m3.md`.
+
+**State:** work is on branch `m1-m4`, on an open PR awaiting the maintainer's review. Not merged.
+
+**Known gaps to pick up:** retention of op tables and outboxes, a discard path for refused operations, entity deletion, device authentication hook, local write benchmark. GateKeeper still needs moving onto Leeway (M6). Upstream #578 and #579 have had no action from this project since filing.
+
+**Next:** merge on the maintainer's word, check that the nightly soak runs, then M5, starting with the generator design note.
+
+**Simulation metrics:** longest run 200,000, no failures; mutant catch rate 18 of 18; shrunk regressions 18.
+

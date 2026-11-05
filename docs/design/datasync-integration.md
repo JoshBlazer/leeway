@@ -113,10 +113,9 @@ others are design requests or narrower, so they are held to avoid flooding a sma
 
 **Why U4 is held:** the client truncates its delta token to milliseconds (`DefaultDeltaTokenStore`, *source*). On a store with finer `UpdatedAt` precision, a same-millisecond row should still compare greater than the token, so the gap looks specific to millisecond-precision stores, such as SQLite with the converter above. Datasync already advises against SQLite for production. This reasoning about other stores is from source only, untested. C19 itself is tested on SQLite.
 
-## Open questions for M3
+## Questions from M0, and what M3 and M4 did
 
-1. **Moving ops into the Datasync queue.** C23 means a queued write can block on a push. Candidate: a spend commits to a
-   `[DoNotSynchronize]` outbox with `addToQueue: false`, and sync copies outbox rows into the queued op table just before pushing.
-2. **Reading a row while its ops are in flight.** Pull overwrites the row, so the visible value must be `pulled + unacknowledged local ops`,
-   computed locally.
-3. **Op table growth.** The server needs a retention policy that still makes replays harmless.
+1. **Moving ops into the Datasync queue.** Solved: a spend commits to a `[DoNotSynchronize]` outbox with `addToQueue: false`, and sync copies
+   outbox rows into the queued op table just before pushing. Tested by `A_spend_completes_while_a_push_is_stuck_on_the_network`.
+2. **Reading a row while its ops are in flight.** Solved: see "Local view" in `escrow-protocol.md` and "settling deltas" in `merge-semantics.md`.
+3. **Op table growth.** **Still open.** The server, and each device's outbox, keep every operation forever. A retention policy has to keep replays harmless.

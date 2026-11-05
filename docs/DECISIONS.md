@@ -23,10 +23,10 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 
 ## ADR-0004: Hybrid logical clocks for last-writer-wins
 
-**Status:** Accepted. Design note due before implementation in M1.
+**Status:** Accepted. Built in M1. See `docs/design/hlc.md` and ADR-0014.
 **Context:** With wall clocks, a device whose clock is ahead wins every merge.
 **Decision:** LWW registers order by HLC (physical, logical, device ID), and receivers advance their clock past anything they see.
-**Honest limit:** An HLC bounds the damage from skew and preserves causality. It cannot tell which of two concurrent writes a human meant to win. A device with a far-future clock also drags the HLC forward, so the design note must define a maximum accepted drift and what happens beyond it.
+**Honest limit:** An HLC preserves causality. It cannot tell which of two concurrent writes a human meant to win, and on its own it lets a device with a far-future clock drag everyone forward. ADR-0014 bounds that.
 
 ## ADR-0005: Stranded quota is written off explicitly by an admin
 
@@ -79,7 +79,7 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 |---|---|---|---|
 | `CommunityToolkit.Datasync.Client` 10.1.2 | `Leeway.Datasync.Client`, samples | MIT | The product extends it. Brings EF Core and SQLite |
 | `CommunityToolkit.Datasync.Server` 10.1.2 | `Leeway.Datasync.Server`, samples | MIT | Same |
-| `CommunityToolkit.Datasync.Server.EntityFrameworkCore` 10.1.2 | Samples | MIT | SQLite-backed repository |
+| `CommunityToolkit.Datasync.Server.EntityFrameworkCore` 10.1.2 | `Leeway.Datasync.Server`, samples | MIT | The op table's transactional repository (ADR-0012). This makes the server package depend on EF Core |
 | `Microsoft.EntityFrameworkCore.Sqlite` 10.0.14 | Samples | MIT | ADR-0003 |
 | `Avalonia`, `.Desktop`, `.Themes.Fluent`, `.Fonts.Inter` 12.1.5 | Sample only | MIT | Demo UI. No paid components |
 
@@ -89,7 +89,7 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 
 ## ADR-0012: Carry intent in an append-only operation table, and merge on the server
 
-**Status:** Accepted by the maintainer, 2026-11-04. It changes an emphasis in the brief.
+**Status:** Accepted by the maintainer, 2026-11-04, and built in M3 and M4. It changes an emphasis in the brief.
 **Context:** Brief §5 describes a client-side "field-semantic conflict resolver". M0 found this cannot be sufficient by itself:
 - A resolver's merged write is unconditional, so a concurrent update is silently lost (C09, C10). For a counter or escrow balance, this is precisely the failure Leeway exists to prevent.
 - A resolver sees only two row states. A PN-counter or OR-set needs operations or per-device state, and compaction removes them (C07).
@@ -107,7 +107,22 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 
 ## ADR-0013: Server stamps strictly increasing UpdatedAt
 
-**Status:** Accepted by the maintainer, 2026-11-04. Goes with ADR-0012.
+**Status:** Accepted by the maintainer, 2026-11-04, and built in M3. Goes with ADR-0012.
 **Context:** The pull filter is `updatedAt gt <token>`, and SQLite stores `UpdatedAt` in milliseconds, so a later commit in the token's millisecond is never delivered (C19). That breaks simulator property 2 (convergence) with no error anywhere.
 **Decision:** Leeway's server repository stamps `max(now, lastStamp + 1ms)` inside the write transaction. SQLite's single writer makes this sufficient.
 **Honest limit:** This relies on commit order matching stamp order. A server database with concurrent writers needs more care, and that is another reason ADR-0003 limits what is verified.
+
+## ADR-0014: Stamp admission clamps to the drift limit and keeps a device's stamps in sequence order
+
+**Status:** Accepted. It satisfies the maximum-drift requirement of ADR-0004.
+**Context:** The simulator disproved two earlier designs, each passing every unit test written at the time.
+**Decision:** The server clamps a stamp to `now + maxDrift`, places it between the operation's neighbours in the device's sequence, then raises it above whatever the device had seen. Each operation carries `SettledBelow`, which bounds the state kept. Details and the rejected designs are in `docs/design/hlc.md`.
+**Consequence:** `Operation` carries `Observed`, `Sequence`, and `SettledBelow`, and the server stores some state per device.
+
+## ADR-0015: Until the generator exists, read attributes by reflection and store sets as JSON text
+
+**Status:** Accepted, as a stopgap for M5.
+**Context:** The brief's sketch has `ISet<string> Flags` and `zone.TrySpendAsync(...)`. M4 comes before the generator.
+**Decision:** `MergeSchema` reads the attributes by reflection. An `[AddWinsSet]` property is a `string` holding a JSON array. Spends and edits go through `LeewayClient`, as in `client.TrySpendAsync<Zone>("north", z => z.RemainingCapacity, 1)`.
+**Consequence:** The developer experience is rougher than the sketch, and reflection rules out NativeAOT for now. M5 should generate the schema and the friendlier API. `ISet<string>` has not been tried against EF Core and OData.
+

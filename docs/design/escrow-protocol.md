@@ -63,7 +63,11 @@ The wallet update is a single conditional `UPDATE`, so concurrent spends cannot 
 
 ## Local view
 
-Pull overwrites a row (C17). After a pull, Leeway re-applies unacknowledged deltas and confirmed spends to rows whose version changed. Provisional spends are not applied to the visible value, because they might be rejected, and a rejection changes no row and so could never correct it.
+Pull overwrites a row (C17). After a pull, Leeway recomputes each changed row from what was pulled plus every unsettled operation. An operation is unsettled until the row's stamp reaches the stamp returned with its acknowledgement.
+
+The server records its remaining quantity in the row's merge state, so the visible figure is always computed fresh, as `remaining - unsettled confirmed spends`. Nothing is adjusted incrementally, so recomputing is safe to repeat and safe if it races a pull.
+
+Provisional spends are not applied to the visible value, because they might be rejected, and a rejection changes no row and so could never correct it.
 
 ## Allocation
 
@@ -83,3 +87,6 @@ Velocity-based rebalancing is a later layer.
 - **No authentication.** `Device` is whatever the client claims. An app must authenticate devices, otherwise a client can spend from another's lease.
 - **A malicious or modified client is out of scope.** The guarantee assumes the wallet code runs as written. A dishonest device shows up as an overdraft.
 - **SQLite with one server process.** The write gate is in-process, and only this setup is tested (ADR-0003, ADR-0013).
+- **A rejected operation stays queued.** If the server refuses an operation outright, for example an unknown resource, it is retried on every push and reported as `SyncState.Failed`. There is no way yet to discard one. It does not block pulls.
+- **Grants need a connection.** A device with no lease and no signal can only make provisional spends, so it should lease ahead of time.
+- **Local write speed is not measured.** Each write is a SQLite transaction plus a new EF Core context. That should be fine at a gate, but it has no benchmark.

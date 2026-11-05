@@ -58,6 +58,20 @@ After healing all partitions and syncing until quiet:
 6. **Causality:** the register's final value was not superseded by a write that saw it.
 7. **Accounts agree:** each device's reported spends equal the server's `Spent + Overdraft`.
 
+Property 8, **bounded clock influence**, is checked after every event: no register's stamp is further ahead than the drift limit allows.
+
+## What it found
+
+On its first runs, before any mutant was considered, the simulator failed the correct implementation. That made the first "100% catch rate" meaningless, so a mutant now only counts as caught on a schedule the correct code passes.
+
+| Bug | Seen in | Fix |
+|---|---|---|
+| An acknowledged add missing from the view lost the next increment | About a third of runs | Settling deltas (`merge-semantics.md`) |
+| A raised per-device offset let a later write land below an earlier one | 9 in 10,000 runs | Dropped offsets (`hlc.md`) |
+| A raised watermark let a late arrival land above an earlier write | 9 in 50,000 runs | Place each write between its neighbours (`hlc.md`) |
+
+All three passed every unit and property test that existed at the time. The two rare ones show why the soak runs far past the exit check's 10,000, and why it matters that a soak can still find something.
+
 ## Shrinking
 
 `Shrinker` uses delta debugging: remove chunks of events, keep any removal that still fails, and shrink the chunk size down to single events. The result is 1-minimal, meaning that removing any single event makes the failure go away. Shrunk schedules are saved as JSON under `tests/Leeway.Simulation.Tests/regressions/`, and tests replay them against both the mutant and the correct code.
@@ -66,7 +80,7 @@ After healing all partitions and syncing until quiet:
 
 `ProtocolParts` holds the replaceable decisions as delegates, with the real functions as defaults. A mutant is a named change to those parts. Catch rate is caught mutants divided by all mutants, searching up to a fixed number of seeds. The mutants must be plausible mistakes, and the corpus must include those the brief names plus each M0 trap.
 
-**A 100% catch rate only means the simulator catches these mutants.** It says nothing about the mistakes nobody thought of.
+**A 100% catch rate only means the simulator catches these mutants.** It says nothing about the mistakes nobody thought of. It also says nothing about the adapters, which `scripts/adapter-sabotage.py` tests instead.
 
 ## Commands
 

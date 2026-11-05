@@ -23,6 +23,9 @@ dotnet build Leeway.slnx
 dotnet test --solution Leeway.slnx
 dotnet test --project tests/Leeway.Integration.Tests
 powershell -ExecutionPolicy Bypass -File scripts/m0-demo.ps1    # Windows, after a build
+dotnet run --project mutants/Leeway.Mutants -c Release -- catch
+dotnet run --project mutants/Leeway.Mutants -c Release -- soak 10000 1
+python scripts/adapter-sabotage.py                              # Clean tree. Slow: about 20 minutes
 ```
 
 Tests run on Microsoft Testing Platform (ADR-0010). `dotnet test <path>` and VSTest options do not apply.
@@ -35,3 +38,7 @@ Tests run on Microsoft Testing Platform (ADR-0010). `dotnet test <path>` and VST
 - Do not upgrade Verify past 32.x (ADR-0009) or suppress NuGet advisories (ADR-0008).
 - A snapshot test with no generated output passes without comparing anything. Check that a `*.verified.*` file exists.
 - When a test fails intermittently, keep the full output and find the cause. That is how C24 was found.
+- Soak the correct implementation before believing a mutant catch rate. A bug in the correct code looks like a 100% catch rate.
+- A test passing first time proves little. Check that it can fail: the first sabotage run found three protections no test really covered.
+- Sabotage tools must fail loudly if no tests ran. One of ours once reported four false "survived" results for that reason.
+- Change entities only through `LeewayClient`. Direct EF saves are refused, because a queued whole-row write would block pulls (C06).
