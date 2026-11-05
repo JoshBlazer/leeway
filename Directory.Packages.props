@@ -34,6 +34,7 @@
     <PackageVersion Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="FsCheck.Xunit.v3" Version="3.6.0" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" Version="1.1.4" />
+    <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing" Version="1.1.4" />
     <PackageVersion Include="Verify.SourceGenerators" Version="2.5.0" />
     <!-- Do not upgrade past 32.x without an ADR: see ADR-0009 (33.x is not MIT and fails the build without a fee declaration). -->
     <PackageVersion Include="Verify" Version="32.0.1" />

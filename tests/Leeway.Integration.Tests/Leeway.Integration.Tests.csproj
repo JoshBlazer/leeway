@@ -7,5 +7,6 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <ProjectReference Include="..\..\src\Leeway.Datasync.Client\Leeway.Datasync.Client.csproj" />
     <ProjectReference Include="..\..\src\Leeway.Datasync.Server\Leeway.Datasync.Server.csproj" />
+    <ProjectReference Include="..\..\src\Leeway.Generators\Leeway.Generators.csproj" OutputItemType="Analyzer" ReferenceOutputAssembly="false" />
   </ItemGroup>
 </Project>

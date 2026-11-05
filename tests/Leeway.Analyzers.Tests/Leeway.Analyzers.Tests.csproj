@@ -1,8 +1,13 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Workspaces" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing" />
     <ProjectReference Include="..\..\src\Leeway.Analyzers\Leeway.Analyzers.csproj" />
+    <ProjectReference Include="..\..\src\Leeway.Analyzers.CodeFixes\Leeway.Analyzers.CodeFixes.csproj" />
+    <ProjectReference Include="..\..\src\Leeway.Datasync.Client\Leeway.Datasync.Client.csproj" />
+    <ProjectReference Include="..\..\src\Leeway.Datasync.Server\Leeway.Datasync.Server.csproj" />
   </ItemGroup>
 </Project>

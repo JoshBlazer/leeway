@@ -1,9 +1,12 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <Compile Remove="***.received.cs;***.verified.cs" />
+    <Compile Remove="**\*.received.cs;**\*.verified.cs" />
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="Verify.SourceGenerators" />
     <PackageReference Include="Verify.XunitV3" />
     <ProjectReference Include="..\..\src\Leeway.Generators\Leeway.Generators.csproj" />
+    <ProjectReference Include="..\..\src\Leeway.Datasync.Client\Leeway.Datasync.Client.csproj" />
+    <ProjectReference Include="..\..\src\Leeway.Datasync.Server\Leeway.Datasync.Server.csproj" />
   </ItemGroup>
 </Project>
