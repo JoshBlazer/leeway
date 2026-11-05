@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/mutants/">
+    <Project Path="mutants/Leeway.Mutants/Leeway.Mutants.csproj" />
+  </Folder>
   <Folder Name="/samples/">
     <Project Path="samples/GateKeeper.Desktop/GateKeeper.Desktop.csproj" />
     <Project Path="samples/GateKeeper.Server/GateKeeper.Server.csproj" />

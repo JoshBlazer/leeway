@@ -1,5 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="..\..\src\Leeway.Simulation\Leeway.Simulation.csproj" />
+    <ProjectReference Include="..\..\mutants\Leeway.Mutants\Leeway.Mutants.csproj" />
+    <None Include="regressions\*.json" CopyToOutputDirectory="PreserveNewest" LinkBase="regressions" />
   </ItemGroup>
 </Project>

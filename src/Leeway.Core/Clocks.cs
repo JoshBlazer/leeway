@@ -1,4 +1,5 @@
 using System.Collections.Immutable;
+using System.Text.Json;
 
 namespace Leeway.Core;
 
@@ -71,42 +72,82 @@ public sealed class HybridClock
 /// while keeping causal order. See docs/design/hlc.md.
 /// </summary>
 /// <param name="MaxDriftMs">How far ahead of the server a stamp may be.</param>
-/// <param name="Offsets">The correction in force for each device.</param>
-public sealed record StampAuthority(long MaxDriftMs, ImmutableSortedDictionary<string, long> Offsets)
+/// <param name="Admitted">For each device, the physical time given to each sequence that could still have a neighbour arrive.</param>
+public sealed record StampAuthority(long MaxDriftMs, ImmutableSortedDictionary<string, ImmutableSortedDictionary<long, long>> Admitted)
 {
     /// <summary>The default drift limit: five minutes.</summary>
     public const long DefaultMaxDriftMs = 300_000;
 
-    /// <summary>Creates an authority with no offsets.</summary>
+    /// <summary>Creates an authority that has seen nothing.</summary>
     /// <param name="maxDriftMs">How far ahead of the server a stamp may be.</param>
     /// <returns>The new authority.</returns>
-    public static StampAuthority Create(long maxDriftMs = DefaultMaxDriftMs) => new(maxDriftMs, Maps.Empty<long>());
+    public static StampAuthority Create(long maxDriftMs = DefaultMaxDriftMs) => new(maxDriftMs, Maps.Empty<ImmutableSortedDictionary<long, long>>());
 
-    /// <summary>Computes an operation's canonical stamp.</summary>
+    /// <summary>Computes an operation's canonical stamp. Apply each operation only once.</summary>
     /// <param name="op">The operation.</param>
     /// <param name="nowMs">The server's time.</param>
     /// <returns>The canonical stamp, and the authority's next state.</returns>
     public (HybridTimestamp Canonical, StampAuthority Next) Admit(Operation op, long nowMs)
     {
-        long offset = Offsets.GetValueOrDefault(op.Device);
-        long limit = nowMs + MaxDriftMs;
-        long shifted = op.Stamp.Physical - offset;
-        StampAuthority next = this;
-        if (shifted > limit)
+        ImmutableSortedDictionary<long, long> admitted = Admitted.GetValueOrDefault(op.Device) ?? ImmutableSortedDictionary<long, long>.Empty;
+
+        // A device's stamps must not cross in sequence order, whatever order they arrive in,
+        // so this one goes between its neighbours. The entries are in ascending order of both.
+        long physical = Math.Min(op.Stamp.Physical, nowMs + MaxDriftMs);
+        long? ceiling = null;
+        foreach ((long sequence, long time) in admitted)
         {
-            offset += shifted - limit;
-            shifted = limit;
-            next = this with { Offsets = Maps.Normal(Offsets).SetItem(op.Device, offset) };
+            if (sequence < op.Sequence)
+            {
+                physical = Math.Max(physical, time);
+            }
+            else if (sequence > op.Sequence)
+            {
+                ceiling = time;
+                break;
+            }
         }
 
-        long physical = Math.Max(shifted, op.Observed.Physical + 1);
+        if (ceiling is { } limit)
+        {
+            physical = Math.Min(physical, limit);
+        }
+
+        // A write beats everything its device had seen.
+        physical = Math.Max(physical, op.Observed.Physical + 1);
+
+        // Nothing below SettledBelow can arrive again. Keep the highest such entry as a floor.
+        admitted = admitted.SetItem(op.Sequence, physical);
+        long[] settled = admitted.Keys.Where(sequence => sequence < op.SettledBelow).ToArray();
+        if (settled.Length > 1)
+        {
+            admitted = admitted.RemoveRange(settled[..^1]);
+        }
+
+        StampAuthority next = this with { Admitted = Maps.Normal(Admitted).SetItem(op.Device, admitted) };
         return (new HybridTimestamp(physical, (int)Math.Min(op.Sequence, int.MaxValue), op.Device), next);
+    }
+
+    /// <summary>Serializes the authority.</summary>
+    /// <returns>JSON text.</returns>
+    public string ToJson() => JsonSerializer.Serialize(this);
+
+    /// <summary>Deserializes an authority.</summary>
+    /// <param name="json">JSON text.</param>
+    /// <returns>The authority.</returns>
+    public static StampAuthority FromJson(string json)
+    {
+        StampAuthority raw = JsonSerializer.Deserialize<StampAuthority>(json) ?? throw new JsonException("Empty stamp authority.");
+        return raw with { Admitted = Maps.Normal(raw.Admitted) };
     }
 
     /// <inheritdoc />
     public bool Equals(StampAuthority? other)
-        => other is not null && MaxDriftMs == other.MaxDriftMs && Maps.SameItems(Offsets, other.Offsets, EqualityComparer<long>.Default);
+        => other is not null
+            && MaxDriftMs == other.MaxDriftMs
+            && Admitted.Count == other.Admitted.Count
+            && Admitted.All(device => other.Admitted.TryGetValue(device.Key, out ImmutableSortedDictionary<long, long>? theirs) && device.Value.SequenceEqual(theirs));
 
     /// <inheritdoc />
-    public override int GetHashCode() => MaxDriftMs.GetHashCode() ^ Offsets.Count;
+    public override int GetHashCode() => MaxDriftMs.GetHashCode() ^ Admitted.Count;
 }

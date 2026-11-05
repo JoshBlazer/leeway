@@ -1,0 +1,5 @@
+{
+  "Mutant": "LwwWithoutHlc",
+  "Violation": "P8 at event 2: stamp 1481225 is beyond the drift limit at 1000000.",
+  "Schedule": "{\u0022Devices\u0022:5,\u0022Total\u0022:36,\u0022Events\u0022:[{\u0022Type\u0022:\u0022Skew\u0022,\u0022Device\u0022:0,\u0022Value\u0022:481225,\u0022Fault\u0022:\u0022None\u0022},{\u0022Type\u0022:\u0022RegisterWrite\u0022,\u0022Device\u0022:0,\u0022Value\u0022:0,\u0022Fault\u0022:\u0022None\u0022},{\u0022Type\u0022:\u0022Push\u0022,\u0022Device\u0022:0,\u0022Value\u0022:1719082707,\u0022Fault\u0022:\u0022Duplicate\u0022}]}"
+}

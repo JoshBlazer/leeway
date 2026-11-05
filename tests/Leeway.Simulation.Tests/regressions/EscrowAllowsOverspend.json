@@ -1,0 +1,5 @@
+{
+  "Mutant": "EscrowAllowsOverspend",
+  "Violation": "P1 at event 0: d0 wallet is at -3.",
+  "Schedule": "{\u0022Devices\u0022:2,\u0022Total\u0022:10,\u0022Events\u0022:[{\u0022Type\u0022:\u0022Spend\u0022,\u0022Device\u0022:0,\u0022Value\u0022:3,\u0022Fault\u0022:\u0022None\u0022}]}"
+}

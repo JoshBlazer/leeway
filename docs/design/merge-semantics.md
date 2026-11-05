@@ -43,6 +43,12 @@ public sealed record MergeDocument(Counters, Registers, Sets)
 - **Sets are add-wins.** A remove can only tombstone tags it has seen, and a concurrent add has a fresh tag, so it survives.
 - **Registers** compare canonical stamps (see `hlc.md`). The equal-stamp tie-break on value exists only to keep the laws total.
 
+## The local view includes settling deltas
+
+The first version of the simulator found a protocol bug here. After an operation is acknowledged, it leaves the pending list, but the device may not have pulled the row that includes it. A view built from `pulled + pending` then lacks the device's own write, so the next counter add computes its cumulative total from a stale base. The lower total is absorbed by `max`, and an increment is silently lost.
+
+The view is therefore `pulled + settling + pending`, where a settling delta is dropped once a pulled row's stamp reaches the stamp returned with its acknowledgement. Merging an acknowledged delta straight into the pulled state would not work, because its register stamps are the device's rather than the canonical ones.
+
 ## Exit check
 
 Property tests of commutativity, associativity, and idempotence for all four types.

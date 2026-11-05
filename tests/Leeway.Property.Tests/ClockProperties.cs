@@ -81,6 +81,52 @@ public class ClockProperties
         return b.CompareTo(a) > 0;
     }
 
+    /// <summary>
+    /// The general form of the rule. Two earlier designs passed the two-operation test above and failed this,
+    /// and the simulator is what found it: a late arrival must land between its neighbours in sequence order.
+    /// </summary>
+    [Property(MaxTest = 500)]
+    public bool A_devices_stamps_stay_in_sequence_order_for_any_arrival_order_and_times(byte count, int shuffle, int ahead, ushort[] gaps)
+    {
+        const long Start = 1_000_000;
+        int total = 2 + (count % 12);
+        long clock = Start + Math.Abs((long)ahead) % 1_000_000;
+        Operation[] ops = Enumerable.Range(1, total).Select(i => Op("d", i, clock + (i * 7))).ToArray();
+
+        Random random = new(shuffle);
+        Dictionary<long, HybridTimestamp> canonical = [];
+        StampAuthority authority = StampAuthority.Create(5_000);
+        long now = Start;
+        int step = 0;
+        foreach (Operation op in ops.OrderBy(_ => random.Next()))
+        {
+            now += gaps is { Length: > 0 } ? gaps[step++ % gaps.Length] : 1;
+            (canonical[op.Sequence], authority) = authority.Admit(op, now);
+        }
+
+        return Enumerable.Range(1, total - 1).All(i => canonical[i + 1].CompareTo(canonical[i]) > 0);
+    }
+
+    /// <summary>The list of neighbours is bounded by what is unacknowledged, not by history.</summary>
+    [Fact]
+    public void Settled_sequences_are_pruned()
+    {
+        StampAuthority authority = StampAuthority.Create();
+        for (int i = 1; i <= 100; i++)
+        {
+            (_, authority) = authority.Admit(Op("d", i, 1_000 + i) with { SettledBelow = i }, 1_000_000);
+        }
+
+        Assert.True(authority.Admitted["d"].Count <= 2, $"Kept {authority.Admitted["d"].Count} entries.");
+    }
+
+    [Fact]
+    public void An_authority_survives_a_json_round_trip()
+    {
+        (_, StampAuthority authority) = StampAuthority.Create().Admit(Op("d", 3, 1_000), 1_000_000);
+        Assert.Equal(authority, StampAuthority.FromJson(authority.ToJson()));
+    }
+
     [Fact]
     public void A_device_a_day_fast_cannot_beat_a_correct_later_writer()
     {

@@ -24,39 +24,41 @@ The order is `Physical`, then `Logical`, then `Replica` (ordinal), which is tota
 
 ## Server side: stamp admission
 
-A device clock can be wrong by a day, and an HLC does not fix that: it drags everyone forward. ADR-0004 requires a maximum drift and a rule for what happens beyond it. Three rejected options:
+A device clock can be wrong by a day, and an HLC does not fix that: it drags everyone forward. ADR-0004 requires a maximum drift and a rule for what happens beyond it. Rejected options:
 
 - **Reject the operation:** loses a real edit made in good faith.
 - **Re-stamp with the server's time on arrival:** arrival order is not write order. A device's retried earlier write would overtake its later one.
-- **Clamp to the limit:** the same problem, because two clamped stamps tie.
+- **Keep a per-device offset.** This was the first design. The simulator disproved it: shuffled delivery could raise the offset between two writes, so a later write landed below an earlier one (9 runs in 10,000).
+- **Keep one watermark per device.** This was the second design, and the simulator disproved it too: a late arrival clamped against a raised watermark could land above a write admitted before the raise (9 runs in 50,000).
 
 The chosen rule gives every admitted operation a **canonical stamp**:
 
 ```csharp
-public sealed record StampAuthority(long MaxDriftMs, ImmutableSortedDictionary<string, long> Offsets)
+public sealed record StampAuthority(long MaxDriftMs, Admitted /* device -> sequence -> physical */)
 {
     public (HybridTimestamp Canonical, StampAuthority Next) Admit(Operation op, long nowMs);
 }
 ```
 
 ```
-shifted = op.Stamp.Physical - offset[device]
-if shifted > now + maxDrift:
-    offset[device] += shifted - (now + maxDrift)     // Fix this device's offset from here on.
-    shifted = now + maxDrift
-physical = max(shifted, op.Observed.Physical + 1)
+physical = min(op.Stamp.Physical, now + maxDrift)
+physical = max(physical, highest physical admitted at a lower sequence)     // Floor.
+physical = min(physical, lowest physical admitted at a higher sequence)     // Ceiling.
+physical = max(physical, op.Observed.Physical + 1)
 canonical = (physical, op.Sequence, device)
 ```
 
 Why this works:
 
 - **Causality across devices.** `Observed` is the highest canonical stamp the device had pulled when it wrote. So a write that saw a value always gets a higher stamp than that value, even if the device clock is hopelessly behind.
-- **Order within a device.** One offset applies to all of a device's operations, and `Sequence` breaks ties, so a retried earlier write cannot overtake a later one.
+- **Order within a device.** Each operation lands between its neighbours in sequence order, whatever the arrival order, and `Sequence` breaks ties among clamped stamps. A later operation's `Observed` is at least as high as an earlier one's, so the last step cannot cross the ceiling. So a retried earlier write cannot overtake a later one.
 - **Bounded influence.** A fast clock can get ahead by at most `maxDrift`, so it cannot win every merge.
+- **No lasting penalty.** Nothing is remembered about a device's clock error, so correcting the clock needs no recovery.
+- **Bounded memory.** Each operation carries `SettledBelow`, the device's oldest unacknowledged sequence. Nothing lower can arrive again, so those entries are dropped, apart from one kept as a floor.
 
 ## Honest limits
 
 - **Concurrent writes.** Neither saw the other, so the order is arbitrary, though consistent. An HLC cannot know which one a person meant to win.
 - **Within the drift limit, a fast clock still wins concurrent writes.** That is the price of honouring real time. The default limit is 5 minutes.
-- **A rising offset can misorder one device's writes to different fields.** If a device's clock jumps forward *while* its operations are arriving out of order, a retried older write to one field can land below an even older one. It needs both faults together, and the simulator's single register cannot show it. A later write to the field fixes it.
-- **A corrected clock is penalized.** The offset is kept, because the device's HLC never goes backwards either, so its writes stay in order but look older until the wall clock catches up.
+- **A device's HLC never goes backwards.** After a clock is corrected from the future, the device's own stamps stay high until real time catches up. The server clamps them, so this costs nothing beyond the drift limit.
+- **A device that is offline with many unacknowledged operations keeps its entries** until it reconnects. One entry per known device is kept forever.

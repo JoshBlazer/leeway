@@ -58,6 +58,7 @@ public enum OutcomeStatus
 /// <param name="Delta">For a merge, the delta.</param>
 /// <param name="Resource">For an escrow operation, the resource.</param>
 /// <param name="Amount">For an escrow operation, the amount.</param>
+/// <param name="SettledBelow">Every earlier operation from this device below this sequence has been acknowledged, so it will not arrive again.</param>
 public sealed record Operation(
     string Id,
     string Device,
@@ -69,7 +70,8 @@ public sealed record Operation(
     string EntityId,
     MergeDocument? Delta = null,
     string? Resource = null,
-    long Amount = 0)
+    long Amount = 0,
+    long SettledBelow = 0)
 {
     /// <summary>Serializes the operation.</summary>
     /// <returns>JSON text.</returns>

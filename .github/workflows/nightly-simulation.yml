@@ -1,0 +1,44 @@
+name: Nightly simulation
+
+on:
+  schedule:
+    - cron: "17 3 * * *"
+  workflow_dispatch:
+    inputs:
+      runs:
+        description: Number of seeded runs
+        default: "200000"
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  soak:
+    name: Long run with a random start seed
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - name: Catch rate
+        run: dotnet run --project mutants/Leeway.Mutants -c Release -- catch
+      - name: Soak
+        env:
+          RUNS: ${{ inputs.runs || '200000' }}
+        run: |
+          SEED=$(( (RANDOM << 15 | RANDOM) ))
+          echo "Start seed: $SEED"
+          dotnet run --project mutants/Leeway.Mutants -c Release --no-build -- soak "$RUNS" "$SEED" simulation-failures
+      - name: Save failing schedules
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: simulation-failures
+          path: simulation-failures/
+          if-no-files-found: ignore

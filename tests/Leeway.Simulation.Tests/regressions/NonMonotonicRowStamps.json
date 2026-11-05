@@ -1,0 +1,5 @@
+{
+  "Mutant": "NonMonotonicRowStamps",
+  "Violation": "P2: d0 believes it was granted 8, not 10.",
+  "Schedule": "{\u0022Devices\u0022:2,\u0022Total\u0022:10,\u0022Events\u0022:[{\u0022Type\u0022:\u0022RequestLease\u0022,\u0022Device\u0022:0,\u0022Value\u0022:9,\u0022Fault\u0022:\u0022None\u0022},{\u0022Type\u0022:\u0022Push\u0022,\u0022Device\u0022:0,\u0022Value\u0022:1412011072,\u0022Fault\u0022:\u0022None\u0022},{\u0022Type\u0022:\u0022Pull\u0022,\u0022Device\u0022:0,\u0022Value\u0022:0,\u0022Fault\u0022:\u0022None\u0022},{\u0022Type\u0022:\u0022RequestLease\u0022,\u0022Device\u0022:0,\u0022Value\u0022:2,\u0022Fault\u0022:\u0022None\u0022},{\u0022Type\u0022:\u0022Push\u0022,\u0022Device\u0022:0,\u0022Value\u0022:848563345,\u0022Fault\u0022:\u0022ResponseLost\u0022}]}"
+}
