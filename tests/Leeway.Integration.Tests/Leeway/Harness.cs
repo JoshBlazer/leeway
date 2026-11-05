@@ -1,5 +1,3 @@
-using System.Net;
-using System.Net.Sockets;
 using Leeway.Core;
 using Leeway.Datasync.Client;
 using Leeway.Datasync.Server;
@@ -79,16 +77,13 @@ public sealed class TestServer : IAsyncDisposable
 
     public static async Task<TestServer> StartAsync(int capacity = 25)
     {
-        using TcpListener listener = new(IPAddress.Loopback, 0);
-        listener.Start();
-        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        listener.Stop();
-        Uri baseAddress = new($"http://127.0.0.1:{port}/");
         string directory = Directory.CreateTempSubdirectory("leeway-it-").FullName;
         TestClock clock = new();
 
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls(baseAddress.ToString());
+
+        // Port 0 lets the OS choose at bind time. Reserving a port first would race with tests running in parallel.
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Logging.ClearProviders();
         builder.Services.AddDbContext<TestServerDb>(o => o.UseSqlite($"Data Source={Path.Combine(directory, "server.db")};Pooling=False"));
         builder.Services.AddControllers().AddApplicationPart(typeof(TestOperationsController).Assembly);
@@ -101,14 +96,15 @@ public sealed class TestServer : IAsyncDisposable
         WebApplication app = builder.Build();
         app.MapControllers();
 
-        TestServer server = new(app, baseAddress, directory, clock);
-        await server.WithAuthorityAsync(async (db, authority) =>
+        using (IServiceScope scope = app.Services.CreateScope())
         {
-            await db.Database.EnsureCreatedAsync();
-            await authority.CreateEntityAsync(new ServerZone { Id = "north", RemainingCapacity = capacity, CheckIns = 0, Notes = "seeded" });
-        });
+            await scope.ServiceProvider.GetRequiredService<TestServerDb>().Database.EnsureCreatedAsync();
+            await scope.ServiceProvider.GetRequiredService<LeewayAuthority<TestServerDb>>()
+                .CreateEntityAsync(new ServerZone { Id = "north", RemainingCapacity = capacity, CheckIns = 0, Notes = "seeded" });
+        }
+
         await app.StartAsync();
-        return server;
+        return new TestServer(app, new Uri(app.Urls.First() + "/"), directory, clock);
     }
 
     public async Task WithAuthorityAsync(Func<TestServerDb, LeewayAuthority<TestServerDb>, Task> action)

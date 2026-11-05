@@ -1,6 +1,4 @@
 using System.ComponentModel.DataAnnotations;
-using System.Net;
-using System.Net.Sockets;
 using System.Text.Json.Serialization;
 using CommunityToolkit.Datasync.Client.Offline;
 using CommunityToolkit.Datasync.Server;
@@ -128,18 +126,14 @@ public sealed class ProbeServer : IAsyncDisposable
 
     public static async Task<ProbeServer> StartAsync()
     {
-        using TcpListener listener = new(IPAddress.Loopback, 0);
-        listener.Start();
-        int port = ((IPEndPoint)listener.LocalEndpoint).Port;
-        listener.Stop();
-        Uri baseAddress = new($"http://127.0.0.1:{port}/");
-
         SqliteConnection connection = new("Data Source=:memory:");
         await connection.OpenAsync();
 
         ServerProbe probe = new();
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
-        builder.WebHost.UseUrls(baseAddress.ToString());
+
+        // Port 0 lets the OS choose at bind time. Reserving a port first would race with tests running in parallel.
+        builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Logging.ClearProviders();
         builder.Services.AddSingleton(probe);
         builder.Services.AddDbContext<ProbeServerDb>(o => o.UseSqlite(connection));
@@ -160,7 +154,7 @@ public sealed class ProbeServer : IAsyncDisposable
         }
 
         await app.StartAsync();
-        return new ProbeServer(app, connection, baseAddress, probe);
+        return new ProbeServer(app, connection, new Uri(app.Urls.First() + "/"), probe);
     }
 
     /// <summary>Runs code directly against the server's store, bypassing HTTP.</summary>

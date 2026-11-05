@@ -24,11 +24,28 @@ public sealed class ServerProcess : IAsyncDisposable
 
     public string TempFile(string name) => Path.Combine(this.directory, name);
 
+    /// <summary>
+    /// A restart must reuse the port, so the port is reserved up front, unlike the integration harness. Another process
+    /// can take it in the gap, or the OS may not have freed it yet, so retry a few times.
+    /// </summary>
     public async Task StartAsync()
     {
-        this.app = GateKeeperServerApp.Build([], $"Data Source={TempFile("server.db")};Pooling=False", BaseAddress.ToString());
-        await this.app.InitializeDatabaseAsync();
-        await this.app.StartAsync();
+        for (int attempt = 1; ; attempt++)
+        {
+            this.app = GateKeeperServerApp.Build([], $"Data Source={TempFile("server.db")};Pooling=False", BaseAddress.ToString());
+            await this.app.InitializeDatabaseAsync();
+            try
+            {
+                await this.app.StartAsync();
+                return;
+            }
+            catch (IOException) when (attempt < 10)
+            {
+                await this.app.DisposeAsync();
+                this.app = null;
+                await Task.Delay(500);
+            }
+        }
     }
 
     public async Task StopAsync()
