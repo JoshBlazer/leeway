@@ -85,7 +85,7 @@ public sealed class TestServer : IAsyncDisposable
         // Port 0 lets the OS choose at bind time. Reserving a port first would race with tests running in parallel.
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Logging.ClearProviders();
-        builder.Services.AddDbContext<TestServerDb>(o => o.UseSqlite($"Data Source={Path.Combine(directory, "server.db")};Pooling=False"));
+        builder.Services.AddDbContext<TestServerDb>(o => o.UseSqlite($"Data Source={Path.Combine(directory, "server.db")}"));
         builder.Services.AddControllers().AddApplicationPart(typeof(TestOperationsController).Assembly);
         builder.Services.AddLeewayServer<TestServerDb>(o =>
         {
@@ -130,6 +130,7 @@ public sealed class TestServer : IAsyncDisposable
     {
         await this.app.StopAsync();
         await this.app.DisposeAsync();
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
         try
         {
             Directory.Delete(this.directory, recursive: true);
@@ -230,7 +231,7 @@ public sealed class Gate : IDisposable
         Clock = new TestClock(server.Clock.Ms);
         HttpClient http = new(Fault) { BaseAddress = server.BaseAddress, Timeout = timeout ?? TimeSpan.FromSeconds(30) };
         LeewayClientOptions options = new() { DeviceId = name, HttpClient = http, TimeProvider = Clock };
-        DbContextOptions<GateDb> contextOptions = new DbContextOptionsBuilder<GateDb>().UseSqlite($"Data Source={this.path};Pooling=False").Options;
+        DbContextOptions<GateDb> contextOptions = new DbContextOptionsBuilder<GateDb>().UseSqlite($"Data Source={this.path}").Options;
         Client = new LeewayClient<GateDb>(() => new GateDb(contextOptions, options), options);
         Path_ = this.path;
     }
@@ -259,6 +260,7 @@ public sealed class Gate : IDisposable
     {
         if (this.ownsFile)
         {
+            Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
             try
             {
                 File.Delete(this.path);

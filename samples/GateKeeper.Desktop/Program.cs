@@ -17,6 +17,10 @@ public static class Program
             {
                 App.DatabasePath = arg["--db=".Length..];
             }
+            else if (arg.StartsWith("--gate=", StringComparison.Ordinal))
+            {
+                App.GateName = arg["--gate=".Length..];
+            }
         }
 
         BuildAvaloniaApp().StartWithClassicDesktopLifetime(args);

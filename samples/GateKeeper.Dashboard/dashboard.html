@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>GateKeeper dashboard</title>
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-0: #f3f2ef; --surface-1: #fcfcfb; --grid: #dcdad3;
+    --text-primary: #0b0b0b; --text-secondary: #52514e;
+    --series-1: #2a78d6; --series-2: #eb6834; --series-3: #1baf7a;
+    --critical: #b3261e; --good: #00703c;
+  }
+  @media (prefers-color-scheme: dark) {
+    .viz-root {
+      color-scheme: dark;
+      --surface-0: #111110; --surface-1: #1a1a19; --grid: #3a3936;
+      --text-primary: #f0efec; --text-secondary: #c3c2b7;
+      --series-1: #3987e5; --series-2: #d95926; --series-3: #199e70;
+      --critical: #f2968f; --good: #5fce92;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  .viz-root { background: var(--surface-0); color: var(--text-primary); min-height: 100vh; padding: 20px;
+              font: 14px/1.4 system-ui, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+  h1 { font-size: 20px; margin: 0; }
+  h2 { font-size: 15px; margin: 0; }
+  h3 { font-size: 13px; margin: 0 0 6px; color: var(--text-secondary); font-weight: 600; }
+  .conn { font-size: 13px; color: var(--text-secondary); }
+  .conn.down { color: var(--critical); font-weight: 600; }
+  .card { background: var(--surface-1); border-radius: 8px; padding: 14px 16px; margin-bottom: 12px; }
+  .zone-head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .big { font-size: 15px; font-variant-numeric: tabular-nums; }
+  .muted { color: var(--text-secondary); font-size: 13px; }
+  .bar { display: flex; gap: 2px; height: 14px; margin-bottom: 8px; }
+  .seg { min-width: 0; height: 100%; }
+  .seg:first-child { border-radius: 4px 0 0 4px; }
+  .seg:last-child { border-radius: 0 4px 4px 0; }
+  .seg:only-child { border-radius: 4px; }
+  .s1 { background: var(--series-1); } .s2 { background: var(--series-2); } .s3 { background: var(--series-3); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 13px; color: var(--text-secondary); margin-bottom: 10px; }
+  .key { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+  table { border-collapse: collapse; width: 100%; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th { text-align: right; font-weight: 600; color: var(--text-secondary); padding: 3px 8px; border-bottom: 1px solid var(--grid); }
+  td { text-align: right; padding: 3px 8px; }
+  th:first-child, td:first-child { text-align: left; padding-left: 0; }
+  .ok { color: var(--good); } .bad { color: var(--critical); font-weight: 600; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  ul { margin: 0; padding: 0; list-style: none; font-size: 13px; }
+  li { padding: 2px 0; }
+  .flagged { color: var(--critical); font-weight: 600; }
+</style>
+</head>
+<body>
+<div class="viz-root">
+  <header>
+    <h1>GateKeeper</h1>
+    <span id="conn" class="conn">Connecting</span>
+  </header>
+  <div id="zones"></div>
+  <div class="grid">
+    <div class="card"><h3>Duplicate tickets (detected on reconnect)</h3><ul id="duplicates"></ul></div>
+    <div class="card"><h3>Latest operations</h3><ul id="activity"></ul></div>
+  </div>
+</div>
+<script>
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const describe = { LeaseRequest: 'lease', Spend: 'spend', ProvisionalSpend: 'provisional', ReturnLease: 'return', Merge: 'edit' };
+  function seg(cls, value, total, label) {
+    return value > 0 ? `<div class="seg ${cls}" style="flex:${value} ${value} 0" title="${label}: ${value} of ${total}"></div>` : '';
+  }
+  function zoneCard(z) {
+    const rows = z.gates.map(g => `<tr><td>${esc(g.gate)}</td><td>${g.granted}</td><td>${g.spent}</td><td>${g.held}</td><td>${g.provisional}</td><td class="${g.overdraft > 0 ? 'bad' : ''}">${g.overdraft}</td></tr>`).join('');
+    const flags = z.flags.length ? `Flags: ${z.flags.map(esc).join(', ')}` : '';
+    const notes = z.notes ? `Notes: ${esc(z.notes)}` : '';
+    return `<div class="card">
+      <div class="zone-head"><h2>${esc(z.name)}</h2>
+        <span class="big">${z.remaining} of ${z.capacity} left &middot; ${z.checkIns} checked in</span></div>
+      <div class="bar" role="img" aria-label="${z.consumed} consumed, ${z.held} held by gates, ${z.unleased} unleased">
+        ${seg('s1', z.consumed, z.capacity, 'Consumed')}${seg('s2', z.held, z.capacity, 'Held by gates')}${seg('s3', z.unleased, z.capacity, 'Unleased')}
+      </div>
+      <div class="legend">
+        <span><span class="key s1"></span>Consumed ${z.consumed}</span>
+        <span><span class="key s2"></span>Held by gates ${z.held}</span>
+        <span><span class="key s3"></span>Unleased ${z.unleased}</span>
+        <span class="${z.conserved ? 'ok' : 'bad'}">${z.conserved ? '&#10003; Conserved' : '&#10007; Not conserved'}</span>
+      </div>
+      ${rows ? `<table><tr><th>Gate</th><th>Granted</th><th>Spent</th><th>Held</th><th>Provisional</th><th>Overdraft</th></tr>${rows}</table>` : '<div class="muted">No leases yet</div>'}
+      ${flags || notes ? `<div class="muted" style="margin-top:8px">${[notes, flags].filter(Boolean).join(' &middot; ')}</div>` : ''}
+    </div>`;
+  }
+  function render(state) {
+    const conn = document.getElementById('conn');
+    conn.textContent = state.serverUp ? 'Live' : 'Server unreachable. Showing the last known state, while gates work offline.';
+    conn.className = state.serverUp ? 'conn' : 'conn down';
+    if (!state.zones) {
+      return;
+    }
+
+    document.getElementById('zones').innerHTML = state.zones.map(zoneCard).join('');
+    document.getElementById('duplicates').innerHTML = state.duplicates.length
+      ? state.duplicates.map(d => `<li class="flagged">&#9888; ${esc(d.ticket)}: ${d.gates.map(esc).join(', ')}</li>`).join('')
+      : '<li class="muted">None</li>';
+    document.getElementById('activity').innerHTML = state.activity.length
+      ? state.activity.map(a => `<li>${esc(a.device)}: ${esc(describe[a.kind] ?? a.kind)} &rarr; ${esc(a.outcome)}</li>`).join('')
+      : '<li class="muted">None</li>';
+  }
+  async function refresh() {
+    try {
+      render(await (await fetch('/api/state')).json());
+    } catch {
+      const conn = document.getElementById('conn');
+      conn.textContent = 'Dashboard connection lost.';
+      conn.className = 'conn down';
+    }
+  }
+  render(/*INITIAL_STATE*/null);
+  setInterval(refresh, 1000);
+</script>
+</body>
+</html>

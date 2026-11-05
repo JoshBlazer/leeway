@@ -64,7 +64,9 @@ public class M6ExitCheckTests
         Assert.StartsWith("PROVISIONAL", b.LastScan);
 
         await a.ClickSyncAsync();
+        await b.ClickSyncAsync();
         Assert.StartsWith("Server unreachable", a.Status);
+        Assert.StartsWith("Server unreachable", b.Status);
         Assert.Equal("Lease: 0 left", a.WalletLine);
         await server.CaptureStepAsync(a, b, "2-offline");
 
@@ -79,8 +81,12 @@ public class M6ExitCheckTests
         Assert.Equal("Synced with the server.", b.Status);
 
         Assert.Contains(a.ScanLines, line => line.StartsWith("T-1005: admitted", StringComparison.Ordinal));
-        Assert.Contains(b.ScanLines, line => line.StartsWith("T-1009: admitted", StringComparison.Ordinal));
-        Assert.Contains(b.ScanLines, line => line.StartsWith("T-1010: turned away", StringComparison.Ordinal));
+
+        // One of gate B's two provisional scans fits. Which one is arbitrary: a device's operations are not
+        // delivered in order, so this is not first come, first served. See docs/design/gatekeeper.md.
+        string[] provisional = b.ScanLines.Where(line => line.StartsWith("T-1009", StringComparison.Ordinal) || line.StartsWith("T-1010", StringComparison.Ordinal)).ToArray();
+        Assert.Single(provisional, line => line.EndsWith("admitted", StringComparison.Ordinal));
+        Assert.Single(provisional, line => line.EndsWith("turned away", StringComparison.Ordinal));
 
         // The rule held, and the duplicate is flagged at both gates and on the dashboard.
         JsonElement state = await StateAsync(server);
@@ -252,6 +258,7 @@ public class M6ExitCheckTests
         await server.StopAsync();
         JsonElement down = await StateAsync(server);
         Assert.False(down.GetProperty("serverUp").GetBoolean());
+        Assert.Equal(10, ZoneState(down, "zone-north").GetProperty("capacity").GetInt64()); // The last known state.
     });
 
     private static long ZoneConsumed(GateApp gate)

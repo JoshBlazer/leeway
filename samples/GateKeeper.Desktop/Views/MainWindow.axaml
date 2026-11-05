@@ -3,29 +3,48 @@
         xmlns:vm="using:GateKeeper.Desktop.ViewModels"
         x:Class="GateKeeper.Desktop.Views.MainWindow"
         x:DataType="vm:MainViewModel"
-        Title="GateKeeper (M0 spike)"
-        Width="720" Height="460">
-  <Grid RowDefinitions="Auto,*,Auto,Auto" Margin="16" RowSpacing="12">
-    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="12">
-      <TextBlock Grid.Column="0" Text="Zones" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
-      <ToggleSwitch Grid.Column="1" x:Name="NoSignalSwitch" OnContent="No signal" OffContent="Signal"
-                    IsChecked="{Binding SimulateNoSignal}" />
+        Title="{Binding GateName, StringFormat='GateKeeper: {0}'}"
+        Width="560" Height="640">
+  <Grid RowDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto" Margin="14" RowSpacing="10">
+    <Grid Grid.Row="0" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+      <TextBlock Grid.Column="0" Text="{Binding GateName}" FontSize="20" FontWeight="SemiBold" VerticalAlignment="Center" />
+      <ToggleSwitch Grid.Column="1" x:Name="NoSignalSwitch" OnContent="No signal" OffContent="Signal" IsChecked="{Binding SimulateNoSignal}" />
       <Button Grid.Column="2" x:Name="SyncButton" Content="Sync" Command="{Binding SyncCommand}" VerticalAlignment="Center" />
     </Grid>
-    <ListBox Grid.Row="1" x:Name="ZoneList" ItemsSource="{Binding Zones}" SelectedItem="{Binding SelectedZone}">
+    <ListBox Grid.Row="1" x:Name="ZoneList" ItemsSource="{Binding Zones}" SelectedItem="{Binding SelectedZone}" MaxHeight="130">
       <ListBox.ItemTemplate>
         <DataTemplate x:DataType="vm:ZoneRow">
           <TextBlock Text="{Binding Summary}" TextWrapping="Wrap" />
         </DataTemplate>
       </ListBox.ItemTemplate>
     </ListBox>
-    <Grid Grid.Row="2" ColumnDefinitions="*,Auto" ColumnSpacing="12">
-      <TextBox Grid.Column="0" x:Name="NotesBox" PlaceholderText="Gate notes for the selected zone" Text="{Binding NotesDraft}" />
-      <Button Grid.Column="1" x:Name="SaveButton" Content="Save locally" Command="{Binding SaveCommand}" />
+    <Grid Grid.Row="2" ColumnDefinitions="*,Auto,Auto" ColumnSpacing="10">
+      <TextBox Grid.Column="0" x:Name="TicketBox" PlaceholderText="Ticket code" Text="{Binding TicketCode}" />
+      <Button Grid.Column="1" x:Name="ScanButton" Content="Scan" Command="{Binding ScanCommand}" />
+      <Button Grid.Column="2" x:Name="RequestLeaseButton" Content="More lease" Command="{Binding RequestLeaseCommand}" />
     </Grid>
-    <StackPanel Grid.Row="3" Spacing="4">
-      <TextBlock x:Name="StatusText" Text="{Binding Status}" TextWrapping="Wrap" />
-      <TextBlock x:Name="PendingText" Text="{Binding PendingChanges, StringFormat='Changes waiting to sync: {0}'}" Opacity="0.7" />
-    </StackPanel>
+    <Border Grid.Row="3" Background="{Binding LastScanBrush}" CornerRadius="6" Padding="10,8">
+      <StackPanel Spacing="2">
+        <TextBlock x:Name="LastScanText" Text="{Binding LastScan}" Foreground="#111111" FontWeight="SemiBold" TextWrapping="Wrap" />
+        <TextBlock x:Name="WalletText" Text="{Binding WalletLine}" Foreground="#333333" />
+      </StackPanel>
+    </Border>
+    <Grid Grid.Row="4" ColumnDefinitions="*,*" ColumnSpacing="10">
+      <DockPanel Grid.Column="0">
+        <TextBlock DockPanel.Dock="Top" Text="This gate's scans" FontWeight="SemiBold" Margin="0,0,0,4" />
+        <ItemsControl x:Name="ScanList" ItemsSource="{Binding ScanLines}" />
+      </DockPanel>
+      <DockPanel Grid.Column="1">
+        <TextBlock DockPanel.Dock="Top" Text="Duplicate tickets" FontWeight="SemiBold" Margin="0,0,0,4" />
+        <ItemsControl x:Name="DuplicateList" ItemsSource="{Binding DuplicateLines}" />
+      </DockPanel>
+    </Grid>
+    <Grid Grid.Row="5" ColumnDefinitions="*,Auto,*,Auto" ColumnSpacing="8">
+      <TextBox Grid.Column="0" x:Name="NotesBox" PlaceholderText="Notes" Text="{Binding NotesDraft}" />
+      <Button Grid.Column="1" x:Name="SaveNotesButton" Content="Save" Command="{Binding SaveNotesCommand}" />
+      <TextBox Grid.Column="2" x:Name="FlagBox" PlaceholderText="Flag" Text="{Binding FlagDraft}" />
+      <Button Grid.Column="3" x:Name="AddFlagButton" Content="Add" Command="{Binding AddFlagCommand}" />
+    </Grid>
+    <TextBlock Grid.Row="6" x:Name="StatusText" Text="{Binding Status}" TextWrapping="Wrap" Opacity="0.8" />
   </Grid>
 </Window>

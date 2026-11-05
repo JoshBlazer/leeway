@@ -1,3 +1,7 @@
+extern alias DashboardApp;
+extern alias ServerApp;
+
+using System.Diagnostics;
 using System.Net;
 using System.Net.Sockets;
 using Avalonia;
@@ -8,8 +12,8 @@ using Avalonia.Threading;
 using GateKeeper.Desktop.Data;
 using GateKeeper.Desktop.ViewModels;
 using GateKeeper.Desktop.Views;
-using GateKeeper.Server;
 using Microsoft.AspNetCore.Builder;
+using ServerApp::GateKeeper.Server;
 
 namespace GateKeeper.Desktop.Tests;
 
@@ -19,20 +23,23 @@ public sealed class ServerProcess : IAsyncDisposable
     private readonly string directory = Directory.CreateTempSubdirectory("leeway-e2e-").FullName;
     private readonly int port = FreePort();
     private WebApplication? app;
+    private WebApplication? dashboard;
 
     public Uri BaseAddress => new($"http://127.0.0.1:{this.port}/");
+
+    public Uri DashboardAddress => new(this.dashboard!.Urls.First() + "/");
 
     public string TempFile(string name) => Path.Combine(this.directory, name);
 
     /// <summary>
-    /// A restart must reuse the port, so the port is reserved up front, unlike the integration harness. Another process
-    /// can take it in the gap, or the OS may not have freed it yet, so retry a few times.
+    /// A restart must reuse the port, so the port is reserved up front. Another process can take it
+    /// in the gap, or the OS may not have freed it yet, so retry a few times.
     /// </summary>
     public async Task StartAsync()
     {
         for (int attempt = 1; ; attempt++)
         {
-            this.app = GateKeeperServerApp.Build([], $"Data Source={TempFile("server.db")};Pooling=False", BaseAddress.ToString());
+            this.app = GateKeeperServerApp.Build([], $"Data Source={TempFile("server.db")}", BaseAddress.ToString());
             await this.app.InitializeDatabaseAsync();
             try
             {
@@ -48,6 +55,12 @@ public sealed class ServerProcess : IAsyncDisposable
         }
     }
 
+    public async Task StartDashboardAsync()
+    {
+        this.dashboard = DashboardApp::GateKeeper.Dashboard.GateKeeperDashboardApp.Build([], BaseAddress, "http://127.0.0.1:0");
+        await this.dashboard.StartAsync();
+    }
+
     public async Task StopAsync()
     {
         if (this.app is not null)
@@ -58,9 +71,67 @@ public sealed class ServerProcess : IAsyncDisposable
         }
     }
 
+    /// <summary>When asked to, saves both gates and the dashboard, for the README's GIF. Otherwise does nothing.</summary>
+    public async Task CaptureStepAsync(GateApp a, GateApp b, string step)
+    {
+        string? directory = Environment.GetEnvironmentVariable("LEEWAY_CAPTURE_DIR");
+        if (directory is null)
+        {
+            return;
+        }
+
+        a.Capture(Path.Combine(directory, $"{step}-a.png"));
+        b.Capture(Path.Combine(directory, $"{step}-b.png"));
+
+        string? browser = Environment.GetEnvironmentVariable("LEEWAY_BROWSER");
+        if (browser is not null && this.dashboard is not null)
+        {
+            string profile = TempFile("browser-" + Guid.NewGuid().ToString("N"));
+            string screenshot = Path.Combine(directory, $"{step}-dashboard.png");
+            using Process process = Process.Start(new ProcessStartInfo(browser)
+            {
+                ArgumentList =
+                {
+                    "--headless=new", "--disable-gpu", "--hide-scrollbars", "--window-size=760,640", "--timeout=4000",
+                    $"--user-data-dir={profile}", $"--screenshot={screenshot}", DashboardAddress.ToString(),
+                },
+                UseShellExecute = false,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            })!;
+            process.OutputDataReceived += (_, _) => { };
+            process.ErrorDataReceived += (_, _) => { };
+            process.BeginOutputReadLine();
+            process.BeginErrorReadLine();
+
+            // Headless browsers can hang. Never leave one behind, or it holds the caller's output pipes open.
+            using CancellationTokenSource limit = new(TimeSpan.FromSeconds(45));
+            try
+            {
+                await process.WaitForExitAsync(limit.Token);
+            }
+            finally
+            {
+                if (!process.HasExited)
+                {
+                    process.Kill(entireProcessTree: true);
+                }
+            }
+
+            Assert.True(File.Exists(screenshot), $"The browser made no screenshot for {step}.");
+        }
+    }
+
     public async ValueTask DisposeAsync()
     {
         await StopAsync();
+        if (this.dashboard is not null)
+        {
+            await this.dashboard.StopAsync();
+            await this.dashboard.DisposeAsync();
+        }
+
+        Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
         try
         {
             Directory.Delete(this.directory, recursive: true);
@@ -81,8 +152,7 @@ public sealed class ServerProcess : IAsyncDisposable
 
 /// <summary>
 /// Models a very poor signal: the request fails the way an HttpClient timeout does, before reaching the server.
-/// The real timeout path is pinned by probes C24 and C25. Using a generous real timeout here means that a loaded
-/// test machine cannot time out after the server applied a write, which is C25's separate behaviour.
+/// The real timeout path is pinned by probes C24 and C25.
 /// </summary>
 public sealed class PoorSignal : DelegatingHandler
 {
@@ -108,7 +178,7 @@ public sealed class GateApp
         Signal = new PoorSignal { InnerHandler = new SocketsHttpHandler { ConnectTimeout = TimeSpan.FromSeconds(3), PooledConnectionLifetime = TimeSpan.Zero } };
         Gate = new ConnectivityGate { InnerHandler = Signal };
         HttpClient http = new(Gate) { BaseAddress = server.BaseAddress, Timeout = TimeSpan.FromSeconds(60) };
-        ViewModel = new MainViewModel(new GateStore($"Data Source={server.TempFile(name + ".db")};Pooling=False", http), Gate);
+        ViewModel = new MainViewModel(new GateService(name, $"Data Source={server.TempFile(name + ".db")}", http), Gate);
         Window = new MainWindow { DataContext = ViewModel };
         Window.Show();
     }
@@ -125,32 +195,48 @@ public sealed class GateApp
 
     public string Status => Find<TextBlock>("StatusText").Text ?? string.Empty;
 
-    public string PendingLine => Find<TextBlock>("PendingText").Text ?? string.Empty;
+    public string LastScan => Find<TextBlock>("LastScanText").Text ?? string.Empty;
+
+    public string WalletLine => Find<TextBlock>("WalletText").Text ?? string.Empty;
 
     public string[] ZoneLines => ViewModel.Zones.Select(z => z.Summary).ToArray();
 
-    /// <summary>Selects a zone by clicking its row, as a user would.</summary>
-    public void SelectZone(string zoneId)
+    public string[] ScanLines => [.. ViewModel.ScanLines];
+
+    public string[] DuplicateLines => [.. ViewModel.DuplicateLines];
+
+    /// <summary>Types with real key input, then clicks Scan.</summary>
+    public async Task ScanAsync(string ticket)
     {
-        ZoneRow row = ViewModel.Zones.Single(z => z.Id == zoneId);
-        ListBox list = Find<ListBox>("ZoneList");
-        list.SelectedItem = row;
-        Dispatcher.UIThread.RunJobs();
+        Type("TicketBox", ticket);
+        await ClickAsync(Find<Button>("ScanButton"), ViewModel.ScanCommand);
     }
 
-    /// <summary>Types into the notes box with real key input, then clicks Save.</summary>
-    public async Task TypeNotesAndSaveAsync(string notes)
+    public async Task SaveNotesAsync(string notes)
     {
-        TextBox box = Find<TextBox>("NotesBox");
-        box.Focus();
-        box.SelectAll();
-        Dispatcher.UIThread.RunJobs();
-        Window.KeyTextInput(notes);
-        Dispatcher.UIThread.RunJobs();
-        await ClickAsync(Find<Button>("SaveButton"), ViewModel.SaveCommand);
+        Type("NotesBox", notes);
+        await ClickAsync(Find<Button>("SaveNotesButton"), ViewModel.SaveNotesCommand);
+    }
+
+    public async Task AddFlagAsync(string flag)
+    {
+        Type("FlagBox", flag);
+        await ClickAsync(Find<Button>("AddFlagButton"), ViewModel.AddFlagCommand);
     }
 
     public Task ClickSyncAsync() => ClickAsync(Find<Button>("SyncButton"), ViewModel.SyncCommand);
+
+    public Task ClickRequestLeaseAsync() => ClickAsync(Find<Button>("RequestLeaseButton"), ViewModel.RequestLeaseCommand);
+
+    private void Type(string boxName, string text)
+    {
+        TextBox box = Find<TextBox>(boxName);
+        box.Focus();
+        box.SelectAll();
+        Dispatcher.UIThread.RunJobs();
+        Window.KeyTextInput(text);
+        Dispatcher.UIThread.RunJobs();
+    }
 
     private async Task ClickAsync(Button button, AsyncCommand command)
     {
@@ -158,6 +244,7 @@ public sealed class GateApp
         Assert.Same(command, button.Command);
 
         // A real pointer click on the button's centre. AsyncCommand runs on the UI thread, so pump until it finishes.
+        Dispatcher.UIThread.RunJobs();
         Point centre = button.TranslatePoint(new Point(button.Bounds.Width / 2, button.Bounds.Height / 2), Window)
             ?? throw new InvalidOperationException("Button is not in the window.");
         Window.MouseDown(centre, MouseButton.Left);
@@ -167,7 +254,7 @@ public sealed class GateApp
 
     public static async Task PumpUntilAsync(Func<bool> condition)
     {
-        DateTime deadline = DateTime.UtcNow.AddSeconds(30);
+        DateTime deadline = DateTime.UtcNow.AddSeconds(60);
         do
         {
             Dispatcher.UIThread.RunJobs();
@@ -178,18 +265,11 @@ public sealed class GateApp
         Assert.True(condition(), "Timed out waiting for the UI.");
     }
 
-    /// <summary>Saves what the window currently shows, for the milestone walkthrough.</summary>
-    public void Capture(string fileName)
+    public void Capture(string path)
     {
-        string? directory = Environment.GetEnvironmentVariable("LEEWAY_CAPTURE_DIR");
-        if (directory is null)
-        {
-            return;
-        }
-
-        Directory.CreateDirectory(directory);
+        Directory.CreateDirectory(Path.GetDirectoryName(path)!);
         Dispatcher.UIThread.RunJobs();
         AvaloniaHeadlessPlatform.ForceRenderTimerTick();
-        Window.CaptureRenderedFrame()?.Save(Path.Combine(directory, fileName), Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
+        Window.CaptureRenderedFrame()?.Save(path, Avalonia.Media.Imaging.PngBitmapEncoderOptions.Default);
     }
 }

@@ -4,6 +4,7 @@
     <PackageReference Include="Avalonia.Headless" />
     <PackageReference Include="Avalonia.Skia" />
     <ProjectReference Include="..\..\samples\GateKeeper.Desktop\GateKeeper.Desktop.csproj" />
-    <ProjectReference Include="..\..\samples\GateKeeper.Server\GateKeeper.Server.csproj" />
+    <ProjectReference Include="..\..\samples\GateKeeper.Server\GateKeeper.Server.csproj" Aliases="ServerApp" />
+    <ProjectReference Include="..\..\samples\GateKeeper.Dashboard\GateKeeper.Dashboard.csproj" Aliases="DashboardApp" />
   </ItemGroup>
 </Project>

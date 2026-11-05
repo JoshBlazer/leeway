@@ -15,16 +15,18 @@ public partial class App : Application
     /// <summary>Local database. Override with --db=path.</summary>
     public static string DatabasePath { get; set; } = "gatekeeper-gate.db";
 
+    /// <summary>This gate's name, which is its device ID. Override with --gate=name.</summary>
+    public static string GateName { get; set; } = "gate-a";
+
     public override void Initialize() => AvaloniaXamlLoader.Load(this);
 
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
         {
-            ConnectivityGate gate = new() { InnerHandler = new SocketsHttpHandler { ConnectTimeout = TimeSpan.FromSeconds(3) } };
-            HttpClient httpClient = new(gate) { BaseAddress = ServerUri, Timeout = TimeSpan.FromSeconds(10) };
-            GateStore store = new($"Data Source={DatabasePath}", httpClient);
-            MainViewModel viewModel = new(store, gate);
+            ConnectivityGate connectivity = new() { InnerHandler = new SocketsHttpHandler { ConnectTimeout = TimeSpan.FromSeconds(3) } };
+            HttpClient httpClient = new(connectivity) { BaseAddress = ServerUri, Timeout = TimeSpan.FromSeconds(10) };
+            MainViewModel viewModel = new(new GateService(GateName, $"Data Source={DatabasePath}", httpClient), connectivity);
             desktop.MainWindow = new MainWindow { DataContext = viewModel };
             _ = viewModel.InitializeAsync();
         }
