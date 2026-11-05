@@ -23,7 +23,7 @@ public sealed class LeewayServerOptions
     public long MaxDriftMs { get; set; } = StampAuthority.DefaultMaxDriftMs;
 
     /// <summary>Chooses a resource's allocation policy. By default, a fixed lease of the size in the field's [Escrow] attribute.</summary>
-    public Func<MergeField, IAllocationPolicy> AllocationPolicy { get; set; } = field => new FixedLease(field.Escrow!.Lease);
+    public Func<MergeField, IAllocationPolicy> AllocationPolicy { get; set; } = field => new FixedLease(field.Lease);
 
     /// <summary>Registers an entity type.</summary>
     /// <typeparam name="T">The server entity class.</typeparam>
@@ -102,7 +102,7 @@ public sealed class LeewayAuthority<TContext>(TContext context, LeewayServerOpti
 
             foreach (MergeField field in schema.EscrowFields)
             {
-                long total = Convert.ToInt64(field.Property.GetValue(entity)) - field.Escrow!.Min;
+                long total = Convert.ToInt64(field.Get(entity)) - field.Min;
                 if (total < 0)
                 {
                     throw new ArgumentException($"{field.Name} starts below its minimum.", nameof(entity));

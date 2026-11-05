@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <NuGetAudit>false</NuGetAudit>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Leeway.Datasync.Client" Version="1.0.0" />
+    <PackageReference Include="Leeway.Generators" Version="1.0.0" />
+    <PackageReference Include="Leeway.Analyzers" Version="1.0.0" />
+  </ItemGroup>
+</Project>

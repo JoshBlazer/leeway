@@ -70,7 +70,7 @@ public sealed class EntityEdit<T> where T : OfflineEntity
     public EntityEdit<T> Set<TValue>(Expression<Func<T, TValue>> field, TValue value)
     {
         MergeField target = Field(MergeSchema.FieldName(field), FieldKind.LastWriterWins);
-        return Apply(MergeDocument.Empty.WithRegister(target.Name, new LwwRegister(MergeSchema.EncodeValue(value, target.Property.PropertyType), this.stamp)));
+        return Apply(MergeDocument.Empty.WithRegister(target.Name, new LwwRegister(MergeSchema.EncodeValue(value, target.ValueType), this.stamp)));
     }
 
     /// <summary>Adds to a [Counter] field.</summary>

@@ -1,16 +1,16 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
-    <!-- Roslyn loads generators and analyzers into the compiler host, which requires netstandard2.0. -->
+    <!-- Roslyn loads analyzers into the compiler host, which requires netstandard2.0. -->
     <TargetFramework>netstandard2.0</TargetFramework>
-    <PackageId>Leeway.Analyzers</PackageId>
     <EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
-    <IncludeBuildOutput>false</IncludeBuildOutput>
-    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
-    <NoWarn>$(NoWarn);NU5128</NoWarn>
+    <!-- Packed by Leeway.Analyzers.CodeFixes, under the package ID Leeway.Analyzers. -->
+    <IsPackable>false</IsPackable>
+    <PackageId>Leeway.Analyzers.Internal</PackageId>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
-    <None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+    <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
+    <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
   </ItemGroup>
 </Project>

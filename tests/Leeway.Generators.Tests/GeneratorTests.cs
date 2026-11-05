@@ -54,7 +54,7 @@ public class GeneratorTests
         "Generated",
         sources.Select(s => CSharpSyntaxTree.ParseText(s, new CSharpParseOptions(LanguageVersion.Latest))),
         References,
-        new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary));
+        new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary, nullableContextOptions: NullableContextOptions.Enable));
 
     private static GeneratorDriver Run(params string[] sources)
     {
@@ -159,6 +159,21 @@ public class GeneratorTests
     [InlineData("using Leeway.Core; public class Generic<T> : Leeway.Datasync.Client.OfflineEntity { [Counter] public int Count { get; set; } }")]
     public void Nothing_is_generated_when_there_is_nothing_to_do(string source)
         => Assert.Empty(Run(source).GetRunResult().GeneratedTrees);
+
+    /// <summary>Each declaration of a partial class reaches the transform, and they must not produce two files.</summary>
+    [Fact]
+    public void A_partial_class_with_several_declarations_is_generated_once()
+    {
+        const string Source = """
+            using Leeway.Core;
+            using Leeway.Datasync.Client;
+            namespace Venue;
+            public partial class Split : OfflineEntity { [Counter] public int One { get; set; } }
+            public partial class Split { [Counter] public int Two { get; set; } }
+            """;
+        AssertCompiles(Source);
+        Assert.Single(Run(Source).GetRunResult().GeneratedTrees);
+    }
 
     [Fact]
     public void An_unrelated_edit_does_no_new_work()
