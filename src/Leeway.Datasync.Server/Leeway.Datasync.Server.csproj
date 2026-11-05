@@ -3,7 +3,9 @@
     <PackageId>Leeway.Datasync.Server</PackageId>
   </PropertyGroup>
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="CommunityToolkit.Datasync.Server" />
+    <PackageReference Include="CommunityToolkit.Datasync.Server.EntityFrameworkCore" />
     <ProjectReference Include="..\Leeway.Core\Leeway.Core.csproj" />
   </ItemGroup>
 </Project>
