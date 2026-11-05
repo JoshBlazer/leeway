@@ -13,5 +13,6 @@ No packages have been published.
 - `scripts/adapter-sabotage.py`: checks that tests notice when each adapter protection is broken.
 - `scripts/package-check.py`: checks the real NuGet packages from an outside project.
 - Solution scaffold, CI workflow, and project documentation.
-- M0 spike: `GateKeeper.Server` and `GateKeeper.Desktop`, syncing one entity offline with Datasync's default behaviour.
+- GateKeeper demo: server, dashboard, and Avalonia desktop app, using Leeway through its public API (M6). It replaces the M0 spike.
+- A draft write-up in `docs/writeup.md`.
 - Characterization tests of Datasync 10.1.2 and the extension-point map in `docs/design/datasync-integration.md`.

@@ -30,6 +30,8 @@ Lease does not cover it             -> Provisional                  (spend, add 
 
 After a sync, a rejected provisional scan removes its scan and takes back its count, because the person was turned away.
 
+**Provisional scans are not first come, first served.** A device's operations reach the server in arbitrary order, because Datasync's queue has no `ORDER BY`. So if two of a gate's provisional scans compete for one place, either may win.
+
 **These writes are separate transactions.** A crash between them could leave a spend with no scan. Leeway has no multi-entity operation, so this is a real limit. It errs on the safe side, since capacity is spent, not created.
 
 ## Dashboard

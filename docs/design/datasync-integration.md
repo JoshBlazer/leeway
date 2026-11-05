@@ -115,7 +115,7 @@ others are design requests or narrower, so they are held to avoid flooding a sma
 
 ## A race in Datasync's lock
 
-`AsyncLockDictionary` disposes an entry when its count reaches 0, but the check is not atomic with another caller's `GetOrAdd` and increment. That caller can be left with a disposed lock. From the code, it also looks possible for two callers to hold the "exclusive" lock at once, though that has not been observed. Reported as [#596](https://github.com/CommunityToolkit/Datasync/issues/596).
+`AsyncLockDictionary` disposes an entry when its count reaches 0, but the check is not atomic with another caller's `GetOrAdd` and increment. That caller can be left with a disposed lock. From the code, it also looks possible for two callers to hold the "exclusive" lock at once, though that has not been observed. Reported as [#596](https://github.com/CommunityToolkit/Datasync/issues/596), and fixed by the maintainer in [PR #599](https://github.com/CommunityToolkit/Datasync/pull/599), not yet released.
 
 It needs several contexts syncing in one process. It appeared once, in CI, on a probe test. A tight loop did not reproduce it, which fits the analysis, since a busy lock rarely reaches 0.
 
@@ -128,6 +128,8 @@ The maintainer fixed #578 within hours, in [PR #581](https://github.com/Communit
 - A timed-out push will **throw `TimeoutException`** instead of reporting success. `LeewayClient` and the sample already treat that as offline, and a test covers it.
 - Completed operations will be saved before the exception is rethrown, so a mid-batch drop should no longer forget them.
 - **Probes C13, C24, and C25 will then fail. That is what they are for.** Update them to the new behaviour, and keep Leeway's queue check, because it is still correct and harmless.
+
+The maintainer has said they will try to release a 10.2.0 soon. Once it includes these fixes, `LeewaySyncGate` and the sequential test assembly can be reconsidered, though the gate does no harm.
 
 The maintainer also fixed #579, in [PR #582](https://github.com/CommunityToolkit/Datasync/pull/582), adding a conditional `ConflictResolutionResult.Merged`. That does not change ADR-0012, because a resolver still sees only rows and not intent, so a counter or escrow could not use it. `Client` still force-writes, so C09 and C10 should keep passing. It could help an application with plain whole-row entities.
 

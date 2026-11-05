@@ -1,6 +1,6 @@
 # Architecture (draft)
 
-Updated after M5. The data flow below follows ADR-0012, and it is built.
+Updated after M6. The data flow below follows ADR-0012, and it is built.
 
 ```
  ┌──────── Avalonia / MAUI app ────────┐          ┌────────── ASP.NET Core server ──────────┐
@@ -24,8 +24,7 @@ Updated after M5. The data flow below follows ADR-0012, and it is built.
 | `Leeway.Analyzers`, `.CodeFixes` | Diagnostics and code fixes, as one package | Built (M5) |
 | `Leeway.Simulation` | Deterministic simulator | Built (M2) |
 | `mutants/Leeway.Mutants` | Mutation corpus, catch-rate and soak commands | Built (M2) |
-| `samples/GateKeeper.Server`, `.Desktop` | M0 spike: one entity, default resolver. **It does not use Leeway yet** | Working, due for rework in M6 |
-| `samples/GateKeeper.Dashboard` | Dashboard | Not created, due in M6 |
+| `samples/GateKeeper.Server`, `.Desktop`, `.Dashboard` | The demo, using the library through its public API | Built (M6) |
 
 ## Data flow (ADR-0012)
 
@@ -53,6 +52,6 @@ See `docs/design/datasync-integration.md`: the merged write is unconditional (C0
 | Datasync behaviour | Probes over real HTTP and SQLite | `tests/Leeway.Integration.Tests/Datasync` |
 | Leeway over Datasync | End-to-end tests over real HTTP and SQLite, plus sabotage of each adapter protection | `tests/Leeway.Integration.Tests/Leeway`, `scripts/adapter-sabotage.py` |
 | Generator and analyzer | Verify, Roslyn test harness | `tests/Leeway.Generators.Tests`, `tests/Leeway.Analyzers.Tests` |
-| Full app | Headless window with real input, plus a live demo script | `tests/GateKeeper.Desktop.Tests`, `scripts/m0-demo.ps1` |
+| Full app | Headless window with real input, plus a live demo script | `tests/GateKeeper.Desktop.Tests`, `scripts/m6-demo.ps1` |
 
 The simulator runs on `Leeway.Core` and a modelled transport, not real Datasync clients, because Datasync's sync lock is process-wide. Its fault model must include the real transport behaviours M0 found: C12, C13, C19, C24, C25.

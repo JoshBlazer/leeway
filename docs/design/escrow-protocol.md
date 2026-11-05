@@ -89,4 +89,5 @@ Velocity-based rebalancing is a later layer.
 - **SQLite with one server process.** The write gate is in-process, and only this setup is tested (ADR-0003, ADR-0013).
 - **A rejected operation stays queued.** If the server refuses an operation outright, for example an unknown resource, it is retried on every push and reported as `SyncState.Failed`. There is no way yet to discard one. It does not block pulls.
 - **Grants need a connection.** A device with no lease and no signal can only make provisional spends, so it should lease ahead of time.
-- **Local write speed is not measured.** Each write is a SQLite transaction plus a new EF Core context. That should be fine at a gate, but it has no benchmark.
+- **Local write speed is only roughly measured,** at about 8 to 19 ms a write, with SQLite pooling on. See `docs/walkthroughs/m6.md`. There is no benchmark suite.
+- **Provisional spends are not first come, first served.** A device's operations reach the server in arbitrary order.

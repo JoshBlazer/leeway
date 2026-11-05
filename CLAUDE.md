@@ -22,7 +22,8 @@ The SDK may be user-local: `export PATH="$HOME/.dotnet:$PATH" DOTNET_ROOT="$HOME
 dotnet build Leeway.slnx
 dotnet test --solution Leeway.slnx
 dotnet test --project tests/Leeway.Integration.Tests
-powershell -ExecutionPolicy Bypass -File scripts/m0-demo.ps1    # Windows, after a build
+powershell -ExecutionPolicy Bypass -File scripts/m6-demo.ps1    # Windows, after a build
+python scripts/make-demo-gif.py                                 # Rebuilds the README's GIF
 dotnet run --project mutants/Leeway.Mutants -c Release -- catch
 dotnet run --project mutants/Leeway.Mutants -c Release -- soak 10000 1
 python scripts/adapter-sabotage.py                              # Clean tree. Slow: about 20 minutes
@@ -43,4 +44,6 @@ Tests run on Microsoft Testing Platform (ADR-0010). `dotnet test <path>` and VST
 - A test passing first time proves little. Check that it can fail: the first sabotage run found three protections no test really covered.
 - Sabotage tools must fail loudly if no tests ran. One of ours once reported four false "survived" results for that reason.
 - A snapshot is only a promise about text: read a new one before accepting it.
+- Look at rendered output too. The first demo GIF passed every assertion and had a blank dashboard.
+- Do not assume a device's operations arrive in order. That made a test pass by luck.
 - Change entities only through `LeewayClient`. Direct EF saves are refused, because a queued whole-row write would block pulls (C06).

@@ -9,9 +9,9 @@ Each milestone ends with an exit check, `docs/walkthroughs/mN.md`, and a review 
 | M2 | Simulator and mutation corpus, nightly CI | Simulator catches every mutant; 10,000 seeded runs green | **Done** |
 | M3 | Escrow end to end | Two offline clients spend within leases, reconnect, invariant holds; overspend becomes provisional and resolves correctly | **Done** |
 | M4 | Field-semantic conflict resolution | Concurrent offline edits merge per field | **Done** |
-| M5 | Generator and analyzer | Snapshot tests; diagnostics and code fixes tested | Exit check met |
-| M6 | GateKeeper demo and launch | Published README demo and walkthrough | Not started |
+| M5 | Generator and analyzer | Snapshot tests; diagnostics and code fixes tested | **Done** |
+| M6 | GateKeeper demo and launch | Published README demo and walkthrough | Exit check met. The write-up is an unpublished draft |
 
-**M6 scope added by M4:** move GateKeeper from the M0 spike onto Leeway. The sample does not use the library yet.
+**Before real use:** device authentication, server databases other than SQLite, retention, a discard path for refused operations, entity deletion, and first-come ordering for provisional spends. These matter more than any later layer.
 
-**Later layers:** MAUI Android client, velocity-based rebalancing, upstream contributions, more invariant types. None of these starts before M0 to M5 are done.
+**Later layers:** MAUI Android client, velocity-based rebalancing, more invariant types.

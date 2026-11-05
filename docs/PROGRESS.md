@@ -84,13 +84,27 @@ The maintainer asked for M1 to M4 in one run, so there were no review stops betw
 - M5: `docs/design/generator.md`, generated schema and typed API, rules LEE001 to LEE006, code fixes, and `scripts/package-check.py` in CI. ADR-0016 added, and ADR-0015 updated.
 - Tried `ISet<string>`: EF Core refuses it without a converter, so sets stay as JSON strings.
 
-**State:** work is on branch `m5`, on a PR awaiting the maintainer's review. Not merged.
-
-**Next:** merge on the maintainer's word. Then M6, which moves GateKeeper onto Leeway, adds the dashboard, and records the demo. That is the first real use of the analyzer, so watch for false positives.
+**State:** merged to `main` by fast-forward on the maintainer's word (PR #3).
 
 **Upstream:** #579 was fixed in PR #582, unreleased. CI found a race in Datasync's lock, reported as #596, with `LeewaySyncGate` as the defence.
 
 **Still open from earlier:** retention, a discard path for refused operations, entity deletion, a device authentication hook, a local write benchmark.
 
 **Simulation metrics:** longest local run 200,000, no failures; mutant catch rate 18 of 18; shrunk regressions 18.
+
+## 2026-11-05: Session 2, continued, M6
+
+**Done**
+
+- Merged PR #3. M6: GateKeeper rebuilt on Leeway (server, dashboard, desktop), `scripts/m6-demo.ps1`, `scripts/make-demo-gif.py`, the README demo, and a draft write-up in `docs/writeup.md`.
+
+**Key findings:** provisional spends are not first come, first served. Local writes take about 8 to 19 ms with pooling on, roughly measured. Looking at the GIF found three problems no assertion caught. See `docs/walkthroughs/m6.md`.
+
+**Upstream:** #578, #579, and #596 are all fixed by the maintainer (PRs #581, #582, #599). None is released yet, and we stay pinned at 10.1.2. The maintainer has said they will try to release 10.2.0 soon.
+
+**State:** all six milestones are met. Work is on branch `m6`, on a PR awaiting review. **The write-up has not been published anywhere, and needs the maintainer's review.**
+
+**Next:** merge on the maintainer's word. Then upgrade Datasync when a release includes the fixes, following "When upgrading" in the integration map. After that, the "before real use" list in the roadmap: authentication first.
+
+**Simulation metrics:** longest run 200,000 locally, and 200,000 in nightly CI from a random seed, no failures; mutant catch rate 18 of 18; shrunk regressions 18.
 
