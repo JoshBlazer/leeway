@@ -88,7 +88,9 @@ The maintainer asked for M1 to M4 in one run, so there were no review stops betw
 
 **Next:** merge on the maintainer's word. Then M6, which moves GateKeeper onto Leeway, adds the dashboard, and records the demo. That is the first real use of the analyzer, so watch for false positives.
 
-**Still open from earlier:** retention, a discard path for refused operations, entity deletion, a device authentication hook, a local write benchmark. Upstream #579 is open.
+**Upstream:** #579 was fixed in PR #582, unreleased. CI found a race in Datasync's lock, reported as #596, with `LeewaySyncGate` as the defence.
+
+**Still open from earlier:** retention, a discard path for refused operations, entity deletion, a device authentication hook, a local write benchmark.
 
 **Simulation metrics:** longest local run 200,000, no failures; mutant catch rate 18 of 18; shrunk regressions 18.
 

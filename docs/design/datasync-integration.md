@@ -104,7 +104,7 @@ others are design requests or narrower, so they are held to avoid flooding a sma
 | # | Proposal | Evidence | Workaround | Upstream |
 |---|---|---|---|---|
 | U1 | A timed-out push should report failure, not success | C24, C25 | Check the queue after push | [#578](https://github.com/CommunityToolkit/Datasync/issues/578): **fixed upstream, unreleased** |
-| U2 | Resolver `Client` result should send `If-Match` with the server version just received | C09, C10 | Merge on the server; rebase (C11) | [#579](https://github.com/CommunityToolkit/Datasync/issues/579) |
+| U2 | Resolver `Client` result should send `If-Match` with the server version just received | C09, C10 | Merge on the server; rebase (C11) | [#579](https://github.com/CommunityToolkit/Datasync/issues/579): **fixed upstream, unreleased** |
 | U3 | Persist each operation's completion as it happens | C13 | Idempotent op table | Held. The #578 fix also persists progress when a push fails, which may resolve this |
 | U4 | Close the same-millisecond delta gap, for example `ge` with client-side dedupe | C19 | Strictly increasing server stamps (ADR-0013) | Held: see below |
 | U5 | Order queued operations by `Sequence` | *source* | Order-independent application | Held |
@@ -113,6 +113,14 @@ others are design requests or narrower, so they are held to avoid flooding a sma
 
 **Why U4 is held:** the client truncates its delta token to milliseconds (`DefaultDeltaTokenStore`, *source*). On a store with finer `UpdatedAt` precision, a same-millisecond row should still compare greater than the token, so the gap looks specific to millisecond-precision stores, such as SQLite with the converter above. Datasync already advises against SQLite for production. This reasoning about other stores is from source only, untested. C19 itself is tested on SQLite.
 
+## A race in Datasync's lock
+
+`AsyncLockDictionary` disposes an entry when its count reaches 0, but the check is not atomic with another caller's `GetOrAdd` and increment. That caller can be left with a disposed lock. From the code, it also looks possible for two callers to hold the "exclusive" lock at once, though that has not been observed. Reported as [#596](https://github.com/CommunityToolkit/Datasync/issues/596).
+
+It needs several contexts syncing in one process. It appeared once, in CI, on a probe test. A tight loop did not reproduce it, which fits the analysis, since a busy lock rarely reaches 0.
+
+**Leeway's defence:** `LeewaySyncGate` lets one sync run at a time across every client in the process (`Clients_in_one_process_sync_one_at_a_time`). So a client stuck on a slow network delays other clients' syncs in that process, but never their local writes. Using `OfflineDbContext` directly bypasses this, so the integration test assembly runs sequentially.
+
 ## When upgrading past 10.1.2
 
 The maintainer fixed #578 within hours, in [PR #581](https://github.com/CommunityToolkit/Datasync/pull/581), merged 2026-11-05 and not yet released. Read from its description and diff, not tested against a build of it:
@@ -120,6 +128,8 @@ The maintainer fixed #578 within hours, in [PR #581](https://github.com/Communit
 - A timed-out push will **throw `TimeoutException`** instead of reporting success. `LeewayClient` and the sample already treat that as offline, and a test covers it.
 - Completed operations will be saved before the exception is rethrown, so a mid-batch drop should no longer forget them.
 - **Probes C13, C24, and C25 will then fail. That is what they are for.** Update them to the new behaviour, and keep Leeway's queue check, because it is still correct and harmless.
+
+The maintainer also fixed #579, in [PR #582](https://github.com/CommunityToolkit/Datasync/pull/582), adding a conditional `ConflictResolutionResult.Merged`. That does not change ADR-0012, because a resolver still sees only rows and not intent, so a counter or escrow could not use it. `Client` still force-writes, so C09 and C10 should keep passing. It could help an application with plain whole-row entities.
 
 ## Questions from M0, and what M3 and M4 did
 

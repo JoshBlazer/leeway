@@ -34,11 +34,11 @@ someEntity.Stock--;   // LEE001
 
 | Milestone | State | Proving command | Last result |
 |---|---|---|---|
-| All tests | CI (Linux), and locally on Windows | `dotnet test --solution Leeway.slnx -c Release` | 166 of 166 pass |
+| All tests | CI (Linux), and locally on Windows | `dotnet test --solution Leeway.slnx -c Release` | 167 of 167 pass |
 | **M0** Datasync spike | Done | `dotnet test --project tests/GateKeeper.Desktop.Tests` | 4 of 4 pass |
 | **M1** `Leeway.Core` | Done | `dotnet test --project tests/Leeway.Property.Tests` | 35 of 35 pass |
 | **M2** Simulator and mutants | Done | `dotnet run --project mutants/Leeway.Mutants -c Release -- catch` | 18 of 18 caught |
-| **M3** Escrow end to end | Done | `dotnet test --project tests/Leeway.Integration.Tests` | 65 of 65 pass |
+| **M3** Escrow end to end | Done | `dotnet test --project tests/Leeway.Integration.Tests` | 66 of 66 pass |
 | **M4** Per-field merging | Done | Same | Same |
 | **M5** Generator and analyzer | Exit check met | `dotnet test --project tests/Leeway.Analyzers.Tests` | 37 of 37 pass, plus 14 of 14 for the generator |
 | Real NuGet packages | CI (Linux), and locally on Windows | `python scripts/package-check.py` | `PACKAGE CHECK PASSED` |
@@ -66,7 +66,7 @@ explained in the [integration map](docs/design/datasync-integration.md), and Lee
 - **A poor signal alone can leave one device in a conflict with itself**, when the server applied a write but the response never arrived (C12, C25).
 - **On a millisecond-precision store such as SQLite, a row sharing the sync token's millisecond is never pulled** (C19).
 
-Two are filed upstream: the maintainer has fixed [#578](https://github.com/CommunityToolkit/Datasync/issues/578), though it is not released yet, and is looking at [#579](https://github.com/CommunityToolkit/Datasync/issues/579). As a result, [ADR-0012](docs/DECISIONS.md) chooses an append-only operation log with merging done on the server, rather than a client conflict resolver alone.
+Two are filed upstream: the maintainer has fixed both [#578](https://github.com/CommunityToolkit/Datasync/issues/578) and [#579](https://github.com/CommunityToolkit/Datasync/issues/579), though not in a release yet. As a result, [ADR-0012](docs/DECISIONS.md) chooses an append-only operation log with merging done on the server, rather than a client conflict resolver alone.
 
 ## Honest limits
 

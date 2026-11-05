@@ -4,6 +4,7 @@
 |---|---|---|
 | Datasync extension points may not expose what is needed | **Partly materialized in M0.** Resolver merge is unsafe, and there is no pull hook | ADR-0012 design. Upstream: #578 and #579 filed, others held (see the integration map) |
 | Datasync behaviour traps: false-success timeouts, lost progress, delta gap | **Materialized in M0** (C13, C19, C24, C25). Handled in M3 | Probes pin them, the simulator models them, and end-to-end tests cover them |
+| A race in Datasync's process-wide lock | **Materialized in M5,** once in CI. Reported upstream as #596 | `LeewaySyncGate` serializes syncs in a process. Direct use of `OfflineDbContext` is not covered |
 | Datasync version churn | **Live:** the #578 fix changes push behaviour in the next release | Pinned at 10.1.2. Probes fail if behaviour changes. Steps are in the integration map |
 | Vulnerable transitive native SQLite | **Materialized in M0.** Fixed here by pins | ADR-0008, C22. **Consumers of Leeway's packages do not inherit our pins**, so they must be told |
 | Licence drift in dependencies | **Materialized in M0** (Verify 33) | ADR-0009. Review licences on every upgrade |
