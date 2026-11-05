@@ -200,6 +200,26 @@ public class EscrowEndToEndTests
         Assert.Equal(1, (await server.ZoneAsync()).CheckIns);
     }
 
+    /// <summary>
+    /// Upstream fixed #578 by making a timed-out push throw TimeoutException, in a release after the pinned 10.1.2.
+    /// Sync must report that as offline, not crash, so upgrading cannot break this contract.
+    /// </summary>
+    [Fact]
+    public async Task A_push_that_throws_a_timeout_exception_is_reported_as_offline()
+    {
+        await using TestServer server = await TestServer.StartAsync(capacity: 10);
+        using Gate a = await Gate.OpenAsync(server, "gate-a");
+        await a.Client.EditAsync<Zone>("north", e => e.Add(z => z.CheckIns, 1));
+
+        a.Fault.BeforeSend = request => request.Method == HttpMethod.Post ? throw new TimeoutException("as in the upstream fix") : Task.CompletedTask;
+        Assert.Equal(SyncState.Offline, (await a.Client.SyncAsync()).State);
+        a.Fault.BeforeSend = null;
+
+        Assert.Equal(1, await a.Client.PendingCountAsync());
+        Assert.Equal(SyncState.Synced, (await a.Client.SyncAsync()).State);
+        Assert.Equal(1, (await server.ZoneAsync()).CheckIns);
+    }
+
     /// <summary>An acknowledged spend must stay in the view until a pull includes it, or the next spend would forget it.</summary>
     [Fact]
     public async Task The_remaining_figure_keeps_an_acknowledged_spend_until_a_pull_includes_it()

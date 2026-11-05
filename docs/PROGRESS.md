@@ -70,7 +70,8 @@ The maintainer asked for M1 to M4 in one run, so there were no review stops betw
 
 **State:** work is on branch `m1-m4`, on an open PR awaiting the maintainer's review. Not merged.
 
-**Known gaps to pick up:** retention of op tables and outboxes, a discard path for refused operations, entity deletion, device authentication hook, local write benchmark. GateKeeper still needs moving onto Leeway (M6). Upstream #578 and #579 have had no action from this project since filing.
+**Known gaps to pick up:** retention of op tables and outboxes, a discard path for refused operations, entity deletion, device authentication hook, local write benchmark. GateKeeper still needs moving onto Leeway (M6). 
+**Upstream:** the maintainer fixed #578 in PR #581 the same day, not yet released, and is looking at #579. The fix makes a timed-out push throw `TimeoutException`, which `LeewayClient` now handles. Before upgrading past 10.1.2, read "When upgrading" in the integration map, because probes C13, C24, and C25 will need updating.
 
 **Next:** merge on the maintainer's word, check that the nightly soak runs, then M5, starting with the generator design note.
 

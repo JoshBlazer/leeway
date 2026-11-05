@@ -30,11 +30,11 @@ await client.SyncAsync();
 
 | Milestone | State | Proving command | Last result |
 |---|---|---|---|
-| All tests | CI (Linux), and locally on Windows | `dotnet test --solution Leeway.slnx -c Release` | 114 of 114 pass |
+| All tests | CI (Linux), and locally on Windows | `dotnet test --solution Leeway.slnx -c Release` | 115 of 115 pass |
 | **M0** Datasync spike | Done | `dotnet test --project tests/GateKeeper.Desktop.Tests` | 4 of 4 pass |
 | **M1** `Leeway.Core` | Exit check met | `dotnet test --project tests/Leeway.Property.Tests` | 35 of 35 pass |
 | **M2** Simulator and mutants | Exit check met | `dotnet run --project mutants/Leeway.Mutants -c Release -- catch` | 18 of 18 caught |
-| **M3** Escrow end to end | Exit check met | `dotnet test --project tests/Leeway.Integration.Tests` | 60 of 60 pass |
+| **M3** Escrow end to end | Exit check met | `dotnet test --project tests/Leeway.Integration.Tests` | 61 of 61 pass |
 | **M4** Per-field merging | Exit check met | Same | Same |
 | Adapter protections | Locally on Windows | `python scripts/adapter-sabotage.py` | 8 of 8 caught |
 | M5, M6 | Not started | See [roadmap](docs/ROADMAP.md) | |
@@ -55,12 +55,12 @@ Walkthroughs with full output: [M0](docs/walkthroughs/m0.md), [M1](docs/walkthro
 Reading the source and testing it turned up behaviour in Datasync 10.1.2 that drove the design. All of it is pinned by tests and
 explained in the [integration map](docs/design/datasync-integration.md), and Leeway handles each case.
 
-- **A push that times out reports success**, with nothing sent and the change still queued (C24).
+- **A push that times out reports success**, with nothing sent and the change still queued (C24, in 10.1.2).
 - **The write after a conflict resolver's merge is unconditional**, so a concurrent update can be silently lost (C10).
 - **A poor signal alone can leave one device in a conflict with itself**, when the server applied a write but the response never arrived (C12, C25).
 - **On a millisecond-precision store such as SQLite, a row sharing the sync token's millisecond is never pulled** (C19).
 
-Two are filed upstream: [#578](https://github.com/CommunityToolkit/Datasync/issues/578) and [#579](https://github.com/CommunityToolkit/Datasync/issues/579). As a result, [ADR-0012](docs/DECISIONS.md) chooses an append-only operation log with merging done on the server, rather than a client conflict resolver alone.
+Two are filed upstream: the maintainer has fixed [#578](https://github.com/CommunityToolkit/Datasync/issues/578), though it is not released yet, and is looking at [#579](https://github.com/CommunityToolkit/Datasync/issues/579). As a result, [ADR-0012](docs/DECISIONS.md) chooses an append-only operation log with merging done on the server, rather than a client conflict resolver alone.
 
 ## Honest limits
 

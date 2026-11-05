@@ -374,7 +374,7 @@ public sealed class LeewayClient<TContext>(Func<TContext> createContext, LeewayC
             {
                 await context.PushAsync([typeof(LeewayOperationRow)], new PushOptions(), cancellationToken);
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or TimeoutException && !cancellationToken.IsCancellationRequested)
             {
                 unreachable = true;
             }
@@ -467,7 +467,7 @@ public sealed class LeewayClient<TContext>(Func<TContext> createContext, LeewayC
                     return false;
                 }
             }
-            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException && !cancellationToken.IsCancellationRequested)
+            catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or TimeoutException && !cancellationToken.IsCancellationRequested)
             {
                 return false;
             }

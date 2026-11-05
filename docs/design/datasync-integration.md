@@ -103,15 +103,23 @@ others are design requests or narrower, so they are held to avoid flooding a sma
 
 | # | Proposal | Evidence | Workaround | Upstream |
 |---|---|---|---|---|
-| U1 | A timed-out push should report failure, not success | C24, C25 | Check the queue after push | [#578](https://github.com/CommunityToolkit/Datasync/issues/578) |
+| U1 | A timed-out push should report failure, not success | C24, C25 | Check the queue after push | [#578](https://github.com/CommunityToolkit/Datasync/issues/578): **fixed upstream, unreleased** |
 | U2 | Resolver `Client` result should send `If-Match` with the server version just received | C09, C10 | Merge on the server; rebase (C11) | [#579](https://github.com/CommunityToolkit/Datasync/issues/579) |
-| U3 | Persist each operation's completion as it happens | C13 | Idempotent op table | Held |
+| U3 | Persist each operation's completion as it happens | C13 | Idempotent op table | Held. The #578 fix also persists progress when a push fails, which may resolve this |
 | U4 | Close the same-millisecond delta gap, for example `ge` with client-side dedupe | C19 | Strictly increasing server stamps (ADR-0013) | Held: see below |
 | U5 | Order queued operations by `Sequence` | *source* | Order-independent application | Held |
 | U6 | Scope the sync lock per context or store, not per process | C23 | Unqueued local writes | Held |
 | U7 | Expose a pull hook | *source* | Re-apply local ops after pull | Held |
 
 **Why U4 is held:** the client truncates its delta token to milliseconds (`DefaultDeltaTokenStore`, *source*). On a store with finer `UpdatedAt` precision, a same-millisecond row should still compare greater than the token, so the gap looks specific to millisecond-precision stores, such as SQLite with the converter above. Datasync already advises against SQLite for production. This reasoning about other stores is from source only, untested. C19 itself is tested on SQLite.
+
+## When upgrading past 10.1.2
+
+The maintainer fixed #578 within hours, in [PR #581](https://github.com/CommunityToolkit/Datasync/pull/581), merged 2026-11-05 and not yet released. Read from its description and diff, not tested against a build of it:
+
+- A timed-out push will **throw `TimeoutException`** instead of reporting success. `LeewayClient` and the sample already treat that as offline, and a test covers it.
+- Completed operations will be saved before the exception is rethrown, so a mid-batch drop should no longer forget them.
+- **Probes C13, C24, and C25 will then fail. That is what they are for.** Update them to the new behaviour, and keep Leeway's queue check, because it is still correct and harmless.
 
 ## Questions from M0, and what M3 and M4 did
 

@@ -77,7 +77,7 @@ public sealed class GateStore
             PullResult pull = await context.PullAsync();
             return pull.IsSuccessful ? new SyncOutcome(SyncState.Synced) : new SyncOutcome(SyncState.Offline);
         }
-        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or TimeoutException)
         {
             return new SyncOutcome(SyncState.Offline);
         }
