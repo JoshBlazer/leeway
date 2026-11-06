@@ -10,6 +10,7 @@
     <PackageVersion Include="CommunityToolkit.Datasync.Client" Version="$(DatasyncVersion)" />
     <PackageVersion Include="CommunityToolkit.Datasync.Server" Version="$(DatasyncVersion)" />
     <PackageVersion Include="CommunityToolkit.Datasync.Server.EntityFrameworkCore" Version="$(DatasyncVersion)" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Relational" Version="$(EfCoreVersion)" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EfCoreVersion)" />
   </ItemGroup>
   <ItemGroup Label="Transitive security pins (see ADR-0008)">
@@ -33,6 +34,8 @@
     <PackageVersion Include="Avalonia.Headless" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="Avalonia.Skia" Version="$(AvaloniaVersion)" />
     <PackageVersion Include="FsCheck.Xunit.v3" Version="3.6.0" />
+    <!-- Tests only, never shipped: GPL-2.0-only WITH Universal-FOSS-exception-1.0. See ADR-0019. -->
+    <PackageVersion Include="MySql.EntityFrameworkCore" Version="10.0.12" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.Analyzer.Testing" Version="1.1.4" />
     <PackageVersion Include="Microsoft.CodeAnalysis.CSharp.CodeFix.Testing" Version="1.1.4" />
     <PackageVersion Include="Verify.SourceGenerators" Version="2.5.0" />

@@ -7,6 +7,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -64,30 +65,52 @@ public sealed class TestServer : IAsyncDisposable
 {
     private readonly WebApplication app;
     private readonly string directory;
+    private readonly string connectionString;
+    private readonly Func<HttpContext, string?>? authenticate;
+    private readonly string? mySqlDatabase;
+    private readonly bool ownsDatabase;
 
-    private TestServer(WebApplication app, Uri baseAddress, string directory, TestClock clock)
+    private TestServer(WebApplication app, Uri baseAddress, string directory, TestClock clock, string connectionString, Func<HttpContext, string?>? authenticate, string? mySqlDatabase, bool ownsDatabase)
     {
         this.app = app;
         BaseAddress = baseAddress;
         this.directory = directory;
         Clock = clock;
+        this.connectionString = connectionString;
+        this.authenticate = authenticate;
+        this.mySqlDatabase = mySqlDatabase;
+        this.ownsDatabase = ownsDatabase;
     }
 
-    public Uri BaseAddress { get; }
+    /// <summary>
+    /// A MySQL server connection string, such as Server=127.0.0.1;Port=3306;User=root;Password=x. When it is set, the
+    /// server side of these tests uses MySQL instead of SQLite. Devices always use SQLite.
+    /// </summary>
+    public static string? MySqlServer => Environment.GetEnvironmentVariable("LEEWAY_TEST_MYSQL");
 
-    public TestClock Clock { get; }
-
-    public static async Task<TestServer> StartAsync(int capacity = 25, Func<HttpContext, string?>? authenticate = null)
+    private static WebApplication BuildApp(string connectionString, TestClock clock, Func<HttpContext, string?>? authenticate)
     {
-        string directory = Directory.CreateTempSubdirectory("leeway-it-").FullName;
-        TestClock clock = new();
-
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
 
         // Port 0 lets the OS choose at bind time. Reserving a port first would race with tests running in parallel.
         builder.WebHost.UseUrls("http://127.0.0.1:0");
         builder.Logging.ClearProviders();
-        builder.Services.AddDbContext<TestServerDb>(o => o.UseSqlite($"Data Source={Path.Combine(directory, "server.db")}"));
+        if (Environment.GetEnvironmentVariable("LEEWAY_TEST_LOG") is not null)
+        {
+            builder.Logging.AddConsole().SetMinimumLevel(LogLevel.Error);
+        }
+
+        builder.Services.AddDbContext<TestServerDb>(o =>
+        {
+            if (MySqlServer is null)
+            {
+                o.UseSqlite(connectionString);
+            }
+            else
+            {
+                o.UseMySQL(connectionString);
+            }
+        });
         builder.Services.AddControllers().AddApplicationPart(typeof(TestOperationsController).Assembly);
         builder.Services.AddLeewayServer<TestServerDb>(o =>
         {
@@ -99,16 +122,76 @@ public sealed class TestServer : IAsyncDisposable
 
         WebApplication app = builder.Build();
         app.MapControllers();
+        return app;
+    }
 
-        using (IServiceScope scope = app.Services.CreateScope())
+    private static async Task ExecuteOnMySqlServerAsync(string sql)
+    {
+        await using global::MySql.Data.MySqlClient.MySqlConnection connection = new(MySqlServer);
+        await connection.OpenAsync();
+        await using global::MySql.Data.MySqlClient.MySqlCommand command = connection.CreateCommand();
+        command.CommandText = sql;
+        await command.ExecuteNonQueryAsync();
+    }
+
+    public Uri BaseAddress { get; }
+
+    public TestClock Clock { get; }
+
+    public static async Task<TestServer> StartAsync(int capacity = 25, Func<HttpContext, string?>? authenticate = null, string mySqlCollation = "utf8mb4_bin")
+    {
+        string directory = Directory.CreateTempSubdirectory("leeway-it-").FullName;
+        TestClock clock = new();
+        string? database = null;
+        string connectionString = $"Data Source={Path.Combine(directory, "server.db")}";
+        if (MySqlServer is not null)
         {
-            await scope.ServiceProvider.GetRequiredService<TestServerDb>().Database.EnsureCreatedAsync();
-            await scope.ServiceProvider.GetRequiredService<LeewayAuthority<TestServerDb>>()
-                .CreateEntityAsync(new ServerZone { Id = "north", RemainingCapacity = capacity, CheckIns = 0, Notes = "seeded" });
+            database = "leeway_" + Guid.NewGuid().ToString("N");
+            await ExecuteOnMySqlServerAsync($"CREATE DATABASE `{database}` CHARACTER SET utf8mb4 COLLATE {mySqlCollation}");
+            connectionString = $"{MySqlServer};Database={database}";
+        }
+
+        WebApplication app = BuildApp(connectionString, clock, authenticate);
+        try
+        {
+            using (IServiceScope scope = app.Services.CreateScope())
+            {
+                TestServerDb db = scope.ServiceProvider.GetRequiredService<TestServerDb>();
+                if (MySqlServer is null)
+                {
+                    await db.Database.EnsureCreatedAsync();
+                }
+                else
+                {
+                    // The database already exists, with the collation under test, so only the tables are needed.
+                    await db.GetService<Microsoft.EntityFrameworkCore.Storage.IRelationalDatabaseCreator>().CreateTablesAsync();
+                }
+
+                await scope.ServiceProvider.GetRequiredService<LeewayAuthority<TestServerDb>>()
+                    .CreateEntityAsync(new ServerZone { Id = "north", RemainingCapacity = capacity, CheckIns = 0, Notes = "seeded" });
+            }
+        }
+        catch
+        {
+            await app.DisposeAsync();
+            if (database is not null)
+            {
+                await ExecuteOnMySqlServerAsync($"DROP DATABASE `{database}`");
+            }
+
+            throw;
         }
 
         await app.StartAsync();
-        return new TestServer(app, new Uri(app.Urls.First() + "/"), directory, clock);
+        return new TestServer(app, new Uri(app.Urls.First() + "/"), directory, clock, connectionString, authenticate, database, ownsDatabase: true);
+    }
+
+    /// <summary>A second server on the same database, as a second process would be. It has its own write gate.</summary>
+    public async Task<TestServer> StartAnotherServerAsync()
+    {
+        WebApplication other = BuildApp(this.connectionString, Clock, this.authenticate);
+        await other.StartAsync();
+        return new TestServer(other, new Uri(other.Urls.First() + "/"), this.directory, Clock, this.connectionString, this.authenticate, this.mySqlDatabase, ownsDatabase: false);
     }
 
     public async Task WithAuthorityAsync(Func<TestServerDb, LeewayAuthority<TestServerDb>, Task> action)
@@ -134,6 +217,16 @@ public sealed class TestServer : IAsyncDisposable
     {
         await this.app.StopAsync();
         await this.app.DisposeAsync();
+        if (!this.ownsDatabase)
+        {
+            return;
+        }
+
+        if (this.mySqlDatabase is not null)
+        {
+            await ExecuteOnMySqlServerAsync($"DROP DATABASE `{this.mySqlDatabase}`");
+        }
+
         Microsoft.Data.Sqlite.SqliteConnection.ClearAllPools();
         try
         {

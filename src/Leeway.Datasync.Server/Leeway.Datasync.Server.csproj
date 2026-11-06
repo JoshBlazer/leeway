@@ -6,6 +6,7 @@
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
     <PackageReference Include="CommunityToolkit.Datasync.Server" />
     <PackageReference Include="CommunityToolkit.Datasync.Server.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
     <ProjectReference Include="..\Leeway.Core\Leeway.Core.csproj" />
   </ItemGroup>
 </Project>

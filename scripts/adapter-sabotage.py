@@ -18,6 +18,7 @@ CONTEXT = "src/Leeway.Datasync.Client/LeewayDbContext.cs"
 SERVER = "src/Leeway.Datasync.Server/LeewayAuthority.cs"
 ACCESS = "src/Leeway.Datasync.Server/Controllers.cs"
 HARDENING = "Leeway.Integration.Tests.Leeway.HardeningTests"
+MYSQL = "Leeway.Integration.Tests.Leeway.MySqlServerTests"
 SUITE = "tests/Leeway.Integration.Tests"
 LIMIT_SECONDS = 420
 
@@ -70,6 +71,16 @@ CASES = [
      "LeewayOutboxRow? next = await context.LeewayOutbox.Where(x => x.State == OutboxState.Pending).OrderBy(x => x.Sequence).FirstOrDefaultAsync(cancellationToken);",
      "LeewayOutboxRow? next = await context.LeewayOutbox.Where(x => x.State == OutboxState.Pending).OrderByDescending(x => x.Sequence).FirstOrDefaultAsync(cancellationToken);", HARDENING),
 ]
+
+
+# These need a MySQL server, so they run only when LEEWAY_TEST_MYSQL is set.
+if os.environ.get("LEEWAY_TEST_MYSQL"):
+    CASES += [
+        ("Servers do not lock across processes", SERVER,
+         "await LockAcrossProcessesAsync(transaction, cancellationToken);", "await Task.CompletedTask;", MYSQL),
+        ("A case-insensitive database is allowed", SERVER,
+         "await CheckCollationAsync(transaction, cancellationToken);", "", MYSQL),
+    ]
 
 
 def run_suite(env, test_class=None):

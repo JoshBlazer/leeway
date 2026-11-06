@@ -57,6 +57,9 @@ public sealed class LeewayServerOptions
 public sealed class LeewayWriteGate
 {
     internal SemaphoreSlim Semaphore { get; } = new(1, 1);
+
+    /// <summary>Whether this process has checked the database's collation.</summary>
+    internal bool CollationChecked { get; set; }
 }
 
 /// <summary>Service registration.</summary>
@@ -355,12 +358,78 @@ public sealed class LeewayAuthority<TContext>(TContext context, LeewayServerOpti
         return authority;
     }
 
+    /// <summary>
+    /// The gate above only covers this process. On a database that has row locks, every write first locks the authority
+    /// row, so that writes from all server processes go one at a time. That makes stamp order the same as commit order,
+    /// which is what lets a pull's delta token be trusted (ADR-0013). It must come first in the transaction, because at
+    /// MySQL's default isolation level, the first plain read fixes what the transaction sees.
+    /// SQLite has only one writer anyway, and no row locks. Other databases have not been tested.
+    /// </summary>
+    private async Task LockAcrossProcessesAsync(IDbContextTransaction transaction, CancellationToken cancellationToken)
+    {
+        if (context.Database.ProviderName?.Contains("MySql", StringComparison.OrdinalIgnoreCase) != true)
+        {
+            return;
+        }
+
+        // Table names come from the EF model, never from a request, so building this text is safe.
+        string table = context.Model.FindEntityType(typeof(LeewayAuthorityRow))!.GetTableName()!;
+        string lockRow = $"SELECT `Id` FROM `{table}` WHERE `Id` = '{LeewayAuthorityRow.SingleId}' FOR UPDATE";
+
+        // Lock first. An INSERT IGNORE on an existing row takes a shared lock, so two writers doing that and then
+        // locking would deadlock. So insert only if the row is missing, which happens once in a database's life.
+        if (await ExecuteAsync(transaction, lockRow, cancellationToken) is null)
+        {
+            await ExecuteAsync(transaction, $"INSERT IGNORE INTO `{table}` (`Id`, `LastStampMs`) VALUES ('{LeewayAuthorityRow.SingleId}', 0)", cancellationToken);
+            await ExecuteAsync(transaction, lockRow, cancellationToken);
+        }
+
+        // Only after the lock: this is a plain read, and it fixes what the transaction sees.
+        await CheckCollationAsync(transaction, cancellationToken);
+    }
+
+    private async Task<object?> ExecuteAsync(IDbContextTransaction transaction, string sql, CancellationToken cancellationToken)
+    {
+        System.Data.Common.DbCommand command = context.Database.GetDbConnection().CreateCommand();
+        await using (command)
+        {
+            command.Transaction = transaction.GetDbTransaction();
+            command.CommandText = sql;
+            return await command.ExecuteScalarAsync(cancellationToken);
+        }
+    }
+
+    /// <summary>
+    /// A case-insensitive collation, MySQL's default, would make gate-a and GATE-A match in the access checks and the
+    /// operation table. That is a security problem which would otherwise show no symptoms, so refuse to run on one.
+    /// </summary>
+    private async Task CheckCollationAsync(IDbContextTransaction transaction, CancellationToken cancellationToken)
+    {
+        if (gate.CollationChecked)
+        {
+            return;
+        }
+
+        string table = context.Model.FindEntityType(typeof(LeewayOperationRow))!.GetTableName()!;
+        string sql = $"SELECT COLLATION_NAME FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND LOWER(TABLE_NAME) = LOWER('{table}') AND COLUMN_NAME = 'Device'";
+        string collation = await ExecuteAsync(transaction, sql, cancellationToken) as string ?? string.Empty;
+        if (!collation.EndsWith("_bin", StringComparison.OrdinalIgnoreCase) && !collation.EndsWith("_cs", StringComparison.OrdinalIgnoreCase))
+        {
+            throw new InvalidOperationException(
+                $"Column {table}.Device has collation '{collation}', which ignores case, so 'gate-a' and 'GATE-A' would be the same device. " +
+                "Create the database with a case-sensitive collation, such as: CREATE DATABASE app COLLATE utf8mb4_bin.");
+        }
+
+        gate.CollationChecked = true;
+    }
+
     private async Task InTransactionAsync(Func<Task> work, CancellationToken cancellationToken)
     {
         await gate.Semaphore.WaitAsync(cancellationToken);
         try
         {
             await using IDbContextTransaction transaction = await context.Database.BeginTransactionAsync(cancellationToken);
+            await LockAcrossProcessesAsync(transaction, cancellationToken);
             await work();
             await transaction.CommitAsync(cancellationToken);
         }

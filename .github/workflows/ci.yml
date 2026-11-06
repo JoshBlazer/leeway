@@ -30,6 +30,31 @@ jobs:
       - name: Check the real packages
         run: python3 scripts/package-check.py
 
+  # The server side of the end-to-end tests, on a database with concurrent writers. See ADR-0019.
+  server-on-mysql:
+    name: Server tests on MySQL
+    runs-on: ubuntu-latest
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: leeway-ci-only
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -pleeway-ci-only"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 30
+    env:
+      LEEWAY_TEST_MYSQL: Server=127.0.0.1;Port=3306;User=root;Password=leeway-ci-only
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - run: dotnet test --project tests/Leeway.Integration.Tests -c Release
+
   sample:
     name: Build Avalonia sample (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
