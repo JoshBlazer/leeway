@@ -81,4 +81,4 @@ With `LEEWAY_TEST_MYSQL` unset, those tests are skipped, which is why a run with
 - **Discarding an edit does not fix the local view** until the server next changes that row.
 - **Deletion cannot be undone,** and an edit racing a delete is lost. The simulator does not model deletion.
 - **Ordering is per device.** Two gates still race, in the order they reconnect. A push now makes one round trip per operation, so sync over real latency will be slower. That has not been measured.
-- **The sabotage script's full run takes about an hour** at the integration suite's speed, so only the hardening cases ran against this final code. The tests themselves ran in full.
+- **The sabotage script's full run takes about an hour** at the integration suite's speed. On Datasync 10.2.0, it has not completed: low memory stopped it after the first of 19 cases, which was caught. The 2 MySQL cases run in CI, and were caught. The tests themselves ran in full.

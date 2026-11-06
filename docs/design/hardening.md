@@ -9,6 +9,8 @@ See ADR-0019. Two bugs that SQLite could never show were found on the way:
 - **A lock-upgrade deadlock.** `INSERT IGNORE` on an existing row takes a shared lock, so two writers both held shared and both wanted exclusive. Now it locks first, and inserts only if the row is missing.
 - **A stale first write.** A plain read before the lock fixes a MySQL transaction's snapshot at its default isolation level. The collation check was such a read, so each server's first write worked from old data. It now runs after the lock.
 
+CI breaks the lock and the collation check on purpose on each run, and the tests notice both.
+
 **Not tested:** separate machines (the tests run two servers in one OS process, each with its own write gate), replicas and failover, write throughput under the single lock, or any other database.
 
 ## Device authentication

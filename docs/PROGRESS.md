@@ -132,9 +132,26 @@ The maintainer said to do all of: merge M6, approve the write-up, and carry on w
 - Two bugs SQLite could not show were found and fixed: a lock-upgrade deadlock, and a stale first write.
 - The maintainer left posting the write-up to my judgement. It stays in the repository, linked from the README, because posting elsewhere under their name is their call. Repository topics were added.
 
-**State:** on branch `mysql-server-tests`, on a PR awaiting review. Not merged.
-
-**Next:** merge on the maintainer's word. Upgrade when Datasync 10.2.0 ships, which was not yet released on 2026-11-05. Then per-entity access control, tombstone compaction, failover and throughput testing, and a real pilot.
+**State:** merged (PR #6).
 
 **Simulation metrics:** unchanged. Mutant catch rate 19 of 19.
+
+## 2026-11-06: Session 2, continued, Datasync 10.2.0
+
+**Done**
+
+- Datasync 10.2.0 was released today, and Leeway now uses it. Only probes C13, C24, and C25 failed, as predicted, and they now pin the new behaviour.
+- The SQLite security pins are gone, because upstream fixed the advisory. The package check now confirms what a consumer resolves: native SQLite 3.53.4.
+- The sabotage case for the queue check stopped being caught, because upstream fixed the path it guards. The check stays as a guard, and the case is gone (19 cases, plus 2 for MySQL).
+- CI now breaks the MySQL lock and collation check on each run. Both were caught, which closes that gap.
+
+**Incident:** the system stopped the full sabotage run for low memory (about 1.7 GB free of 16 GB), and that left a sabotage in `LeewayAuthority.cs`. It was never committed, and was restored with `git restore`. The script now refuses a changed tree. The local Debug binaries may still contain it until the next build.
+
+**Not proven:** the full sabotage run on 10.2.0. Only the first of 19 cases finished, and it was caught.
+
+**State:** on branch `datasync-10.2.0`, in PR #7, awaiting review. Not merged.
+
+**Next:** merge on the maintainer's word. Then per-entity access control, tombstone compaction, failover and throughput testing, and a real pilot.
+
+**Simulation metrics:** not re-run for this upgrade, because the simulator runs on `Leeway.Core` with a modelled transport and uses no Datasync code.
 

@@ -45,6 +45,7 @@ Tests run on Microsoft Testing Platform (ADR-0010). `dotnet test <path>` and VST
 - Soak the correct implementation before believing a mutant catch rate. A bug in the correct code looks like a 100% catch rate.
 - An upstream fix can leave a guard that nothing exercises. After an upgrade, re-run the sabotage cases: one that stops being caught may mean that.
 - A test passing first time proves little. Check that it can fail: the first sabotage run found three protections no test really covered.
+- A killed sabotage run leaves the sabotage in the source and in the binaries. This has happened. The script now refuses a changed tree: check `git diff`, then rebuild.
 - Sabotage tools must fail loudly if no tests ran. One of ours once reported four false "survived" results for that reason.
 - A snapshot is only a promise about text: read a new one before accepting it.
 - Look at rendered output too. The first demo GIF passed every assertion and had a blank dashboard.

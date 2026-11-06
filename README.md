@@ -52,7 +52,7 @@ someEntity.Stock--;   // LEE001
 | **M4** Per-field merging | Done | Same | Same |
 | **M5** Generator and analyzer | Done | `dotnet test --project tests/Leeway.Analyzers.Tests` | 37 of 37 pass, plus 14 of 14 for the generator |
 | Real NuGet packages | CI (Linux), and locally on Windows | `python scripts/package-check.py` | `PACKAGE CHECK PASSED` |
-| Adapter protections | Locally on Windows | `python scripts/adapter-sabotage.py` | 20 of 20 caught |
+| Adapter protections | Locally on Windows, and the 2 MySQL cases in CI | `python scripts/adapter-sabotage.py` | On 10.1.2, 20 of 20 caught. On 10.2.0, the 2 MySQL cases caught; the 19 others not fully re-run, because low memory stopped the run after 1 |
 | **M6** GateKeeper demo | Exit check met | `dotnet test --project tests/GateKeeper.Desktop.Tests` | 8 of 8 pass |
 | **M6** Demo with real processes (Windows) | Locally | `powershell -ExecutionPolicy Bypass -File scripts/m6-demo.ps1` | `M6 DEMO PASSED` |
 

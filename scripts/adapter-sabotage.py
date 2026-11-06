@@ -6,6 +6,8 @@ that job for them. The first run of this idea found three protections that no te
 
 Usage, from the repository root, with a clean working tree:   python scripts/adapter-sabotage.py [--hardening-only]
 It edits source files, restores them after each case, and exits non-zero if any sabotage goes unnoticed.
+A process that is killed cannot restore anything, so it refuses to start on a changed tree. If that happens, look at
+`git diff`: it may be a leftover sabotage. Then rebuild, because the binaries may contain it too.
 A case without a test class runs the whole integration suite, at about four minutes each.
 """
 import os
@@ -106,6 +108,12 @@ def run_suite(env, test_class=None):
 
 
 def main():
+    changed = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, check=True).stdout
+    if changed.strip():
+        print("The working tree has changes, which may be a sabotage left by a killed run. See `git diff`.")
+        print(changed)
+        return 2
+
     env = dict(os.environ, AVALONIA_TELEMETRY_OPTOUT="1")
     noticed = 0
     cases = [c for c in CASES if len(c) == 5] if "--hardening-only" in sys.argv else CASES
