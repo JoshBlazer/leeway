@@ -1,0 +1,24 @@
+name: Adapter sabotage
+
+# The full run takes about an hour, so it is started by hand: gh workflow run adapter-sabotage.yml
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  sabotage:
+    name: Break each adapter protection in turn
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-dotnet@v6
+        with:
+          global-json-file: global.json
+      - run: python3 scripts/adapter-sabotage.py
