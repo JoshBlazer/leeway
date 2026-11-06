@@ -104,10 +104,9 @@ What Leeway cannot guarantee is as important as what it can.
 | `mutants/` | Deliberately broken implementations that measure the simulator |
 | `docs/` | [Product](docs/PRODUCT.md), [architecture](docs/ARCHITECTURE.md), [decisions](docs/DECISIONS.md), [roadmap](docs/ROADMAP.md), [risks](docs/RISKS.md), [progress](docs/PROGRESS.md) |
 
-## AI-assistance disclosure
+## AI disclosure
 
-This project is built with substantial AI assistance. Claude (Anthropic), through Claude Code, wrote the code, tests, and documentation so far under a maintainer's brief.
-Claims here are meant to be checked: each comes with a command to run. Commits are authored by the maintainer, who is responsible for them, so this notice rather than commit metadata is the record of AI involvement.
+This project was built with substantial AI assistance (Claude). The maintainer directs it and is responsible for it.
 
 ## License
 

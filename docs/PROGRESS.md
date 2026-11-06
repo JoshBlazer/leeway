@@ -19,7 +19,7 @@ Read this first at the start of each session. Append at the end of each session.
 - M0 is met locally on Windows, but **not done: CI has never run.** Nothing has been pushed.
 - Work is on local branch `m0-datasync-spike`. `main` holds only the initial commit.
 - Git identity is set in this repository's config only, as a placeholder pending maintainer confirmation.
-- The .NET SDK was installed per-user in `~/.dotnet`, not on `PATH`. See `CLAUDE.md`.
+- The .NET SDK was installed per-user in `~/.dotnet`, not on `PATH`. See `CONTRIBUTING.md`.
 
 **Waiting on the maintainer**
 
@@ -39,7 +39,7 @@ Read this first at the start of each session. Append at the end of each session.
 
 - ADR-0012 and ADR-0013 accepted.
 - Repository is public at `JoshBlazer/leeway`.
-- All commits are authored only as `Joshua Willie <joshblazerwillie@gmail.com>`, with no co-author or tool trailers unless explicitly asked. Local history was rewritten to match before the first push. See `CLAUDE.md`.
+- All commits are authored only as `Joshua Willie <joshblazerwillie@gmail.com>`, with no co-author or tool trailers unless explicitly asked. Local history was rewritten to match before the first push. See `CONTRIBUTING.md`.
 - Upstream filing left to engineering judgement.
 
 **Done**

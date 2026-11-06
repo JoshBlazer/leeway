@@ -75,5 +75,3 @@ Leeway isn't ready for production, and I'd rather say so here than have you find
 ## Try it
 
 Nothing is on NuGet yet. The code, the demo, and a command that proves each claim are at [github.com/JoshBlazer/leeway](https://github.com/JoshBlazer/leeway). If you build offline field apps in .NET, I'd like to hear what's missing.
-
-*This project was built with substantial AI assistance: Claude, through Claude Code, wrote the code, tests, and docs under my direction, and this post was drafted the same way.*

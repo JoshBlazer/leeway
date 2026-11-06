@@ -1,17 +1,16 @@
-# Leeway: working agreement
+# Contributing to Leeway
 
-Start each session by reading `docs/PROGRESS.md`, this file, and the current milestone in `docs/ROADMAP.md`.
+For where things stand, read `docs/PROGRESS.md` and `docs/ROADMAP.md`.
 
 ## House rules
 
 - **"Done" means a command proves it.** Update the README status table in the same commit as the work. Run the command and show its output.
 - **Design notes before code** for hard modules (escrow protocol, HLC, merge semantics, simulator, generator), with signatures and failing tests first.
-- **Decisions go in `docs/DECISIONS.md`.** Each new runtime dependency needs an entry. If a decision is irreversible or contradicts the brief, stop and ask.
+- **Decisions go in `docs/DECISIONS.md`.** Each new runtime dependency needs an entry. Raise anything irreversible before doing it.
 - **Honest limits:** document what cannot be guaranteed offline as prominently as what can.
 - **Hard constraints:** zero cost (check licences, see ADR-0009); extend, do not fork, Datasync; SQLite in samples and on devices, with MySQL allowed for server tests only (ADR-0019); MIT.
 - Core logic stays pure and fully tested before integration. `Leeway.Core` has no Datasync dependency.
-- Small conventional commits. Append to `docs/PROGRESS.md` at the end of each session. Stop at the end of each milestone and wait for review.
-- **Git identity:** commit and push only as `Joshua Willie <joshblazerwillie@gmail.com>` (GitHub: `JoshBlazer`). Add no `Co-Authored-By` trailers or tool attribution in commits or PRs unless the maintainer explicitly asks. The README's AI-assistance disclosure stays.
+- Small conventional commits. Record progress in `docs/PROGRESS.md`.
 - Publishing packages needs the maintainer's approval.
 
 ## Commands
