@@ -26,6 +26,7 @@ python scripts/make-demo-gif.py                                 # Rebuilds the R
 dotnet run --project mutants/Leeway.Mutants -c Release -- catch
 dotnet run --project mutants/Leeway.Mutants -c Release -- soak 10000 1
 python scripts/adapter-sabotage.py                              # Clean tree. Slow: about an hour
+gh workflow run adapter-sabotage.yml                            # The same, on GitHub: about six minutes
 python scripts/adapter-sabotage.py --hardening-only             # Much faster
 LEEWAY_TEST_MYSQL="Server=127.0.0.1;Port=3306;User=root;Password=x" dotnet test --project tests/Leeway.Integration.Tests
 python scripts/package-check.py                                 # Real packages, in an outside project

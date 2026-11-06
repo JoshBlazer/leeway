@@ -147,7 +147,7 @@ The maintainer said to do all of: merge M6, approve the write-up, and carry on w
 
 **Incident:** the system stopped the full sabotage run for low memory (about 1.7 GB free of 16 GB), and that left a sabotage in `LeewayAuthority.cs`. It was never committed, and was restored with `git restore`. The script now refuses a changed tree. The local Debug binaries may still contain it until the next build.
 
-**Not proven:** the full sabotage run on 10.2.0. Only the first of 19 cases finished, and it was caught.
+**Sabotage:** the full run then moved to a manual workflow, `adapter-sabotage.yml`. On 10.2.0 it caught 19 of 19 in about six minutes (run 42274587119).
 
 **State:** on branch `datasync-10.2.0`, in PR #7, awaiting review. Not merged.
 
