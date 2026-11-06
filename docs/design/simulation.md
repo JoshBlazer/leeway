@@ -35,7 +35,7 @@ A test asserts that the same seed gives the same trace hash.
 | `RequestLost` | The request never arrives | C02 |
 | `ResponseLost` | The server applied it, and the device never heard | C12 |
 | `Duplicate` | The same operation delivered twice | |
-| `Timeout` | A push reports success with nothing sent | C24 |
+| `Timeout` | A push times out with nothing sent. Up to Datasync 10.1.2 it also reported success | C24 |
 | `TimeoutAfterApply` | The same, but the server did apply it | C25 |
 | `MidBatchDrop` | Earlier successes in the batch are forgotten | C13 |
 | Reorder | Each push shuffles pending operations | No `ORDER BY` upstream |

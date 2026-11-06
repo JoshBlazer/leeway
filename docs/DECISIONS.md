@@ -12,7 +12,7 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 ## ADR-0002: Extend Datasync, do not fork it; pin 10.1.2
 
 **Status:** Accepted.
-**Decision:** Use public extension points only. Where they fall short, document it, propose it upstream, and work around it. Datasync is pinned centrally to 10.1.2, the latest release at the time.
+**Decision:** Use public extension points only. Where they fall short, document it, propose it upstream, and work around it. Datasync is pinned centrally, to 10.1.2 at first and to 10.2.0 since 2026-11-06.
 **Consequence:** Upgrades are deliberate. The probe tests show what an upgrade changed. See `docs/design/datasync-integration.md`.
 
 ## ADR-0003: SQLite only, for client and server, in all samples and tests
@@ -54,7 +54,8 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 **Context:** Datasync 10.1.2 resolves `SQLitePCLRaw.lib.e_sqlite3` 2.1.11 (GHSA-2m69-gcr7-jv3q, CVE-2025-6965, high). Warnings-as-errors correctly failed the build. The analyzer test harness also resolved a vulnerable `System.Security.Cryptography.Pkcs` 9.0.6.
 **Decision:** Enable central transitive pinning, and pin `SQLitePCLRaw.*` to 2.1.14 and `Pkcs` to 10.0.14. Do not suppress the advisory.
 **Proof:** Probe C22 asserts the loaded native SQLite is at least 3.50.2.
-**Consequence:** Leeway's consumers are not protected by our pins, because pins are not inherited through a package. The packages must document this until upstream moves. `NU1900`, which means the advisory feed was unreachable, is not an error.
+**Consequence:** Leeway's consumers were not protected by our pins, because pins are not inherited through a package. `NU1900`, which means the advisory feed was unreachable, is not an error.
+**Amended 2026-11-06:** Datasync 10.2.0 moved to SQLitePCLRaw 3.x and native SQLite 3.53.4 (public domain, with the wrappers under Apache-2.0), so the SQLite pins are gone and consumers get the fix. C22 and `scripts/package-check.py` check this. The `Pkcs` pin stays.
 
 ## ADR-0009: Stay on Verify 32.x, the last MIT release line
 
@@ -78,9 +79,9 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 
 | Package | Used by | Licence | Why |
 |---|---|---|---|
-| `CommunityToolkit.Datasync.Client` 10.1.2 | `Leeway.Datasync.Client`, samples | MIT | The product extends it. Brings EF Core and SQLite |
-| `CommunityToolkit.Datasync.Server` 10.1.2 | `Leeway.Datasync.Server`, samples | MIT | Same |
-| `CommunityToolkit.Datasync.Server.EntityFrameworkCore` 10.1.2 | `Leeway.Datasync.Server`, samples | MIT | The op table's transactional repository (ADR-0012). This makes the server package depend on EF Core |
+| `CommunityToolkit.Datasync.Client` 10.2.0 | `Leeway.Datasync.Client`, samples | MIT | The product extends it. Brings EF Core and SQLite |
+| `CommunityToolkit.Datasync.Server` 10.2.0 | `Leeway.Datasync.Server`, samples | MIT | Same |
+| `CommunityToolkit.Datasync.Server.EntityFrameworkCore` 10.2.0 | `Leeway.Datasync.Server`, samples | MIT | The op table's transactional repository (ADR-0012). This makes the server package depend on EF Core |
 | `Microsoft.EntityFrameworkCore.Sqlite` 10.0.14 | Samples | MIT | ADR-0003 |
 | `Avalonia`, `.Desktop`, `.Themes.Fluent`, `.Fonts.Inter` 12.1.5 | Sample only | MIT | Demo UI. No paid components |
 

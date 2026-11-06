@@ -69,15 +69,15 @@ Walkthroughs with full output: [M0](docs/walkthroughs/m0.md), [M1](docs/walkthro
 
 ## What Datasync does that shapes this design
 
-Reading the source and testing it turned up behaviour in Datasync 10.1.2 that drove the design. All of it is pinned by tests and
+Reading the source and testing it turned up behaviour in Datasync that drove the design. All of it is pinned by tests and
 explained in the [integration map](docs/design/datasync-integration.md), and Leeway handles each case.
 
-- **A push that times out reports success**, with nothing sent and the change still queued (C24, in 10.1.2).
+- **Up to 10.1.2, a push that timed out reported success**, with nothing sent and the change still queued. Fixed in 10.2.0, which Leeway now uses (C24).
 - **The write after a conflict resolver's merge is unconditional**, so a concurrent update can be silently lost (C10).
 - **A poor signal alone can leave one device in a conflict with itself**, when the server applied a write but the response never arrived (C12, C25).
 - **On a millisecond-precision store such as SQLite, a row sharing the sync token's millisecond is never pulled** (C19).
 
-Two are filed upstream: the maintainer has fixed both [#578](https://github.com/CommunityToolkit/Datasync/issues/578) and [#579](https://github.com/CommunityToolkit/Datasync/issues/579), though not in a release yet. As a result, [ADR-0012](docs/DECISIONS.md) chooses an append-only operation log with merging done on the server, rather than a client conflict resolver alone.
+Two are filed upstream: the maintainer fixed both [#578](https://github.com/CommunityToolkit/Datasync/issues/578) and [#579](https://github.com/CommunityToolkit/Datasync/issues/579) in 10.2.0. As a result, [ADR-0012](docs/DECISIONS.md) chooses an append-only operation log with merging done on the server, rather than a client conflict resolver alone.
 
 ## Honest limits
 

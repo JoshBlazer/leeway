@@ -54,6 +54,10 @@ jobs:
         with:
           global-json-file: global.json
       - run: dotnet test --project tests/Leeway.Integration.Tests -c Release
+      - name: Check the MySQL tests notice a missing lock
+        run: python3 scripts/adapter-sabotage.py --case "Servers do not lock"
+      - name: Check the MySQL tests notice a missing collation check
+        run: python3 scripts/adapter-sabotage.py --case "A case-insensitive database"
 
   sample:
     name: Build Avalonia sample (${{ matrix.os }})

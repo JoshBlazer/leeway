@@ -34,7 +34,7 @@ record the op in an outbox, update the wallet if escrowed, and advance the HLC. 
 **Sync.**
 1. Copy outbox rows into the queued op table, and push them as inserts with client-generated IDs.
 2. Treat a 409 as already applied (C14).
-3. Check the queue, because `PushResult` can report false success (C24).
+3. Check the queue. Up to Datasync 10.1.2, `PushResult` could report false success, and the check stays as a guard (C24).
 4. Pull projections. Entity rows are never pushed, so they cannot conflict (C06).
 
 **Server.** One transaction in a custom repository: dedupe by op ID, merge into per-field state, enforce invariants, record the outcome, and stamp `UpdatedAt` strictly increasing (ADR-0013).

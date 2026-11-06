@@ -31,8 +31,6 @@ CASES = [
      "stamps.Admit(op, Now)", "stamps.Admit(op with { Observed = default }, Now)"),
     ("Client drops settling operations from the view", CLIENT,
      "(x.State != OutboxState.Acknowledged || x.EntityStamp > rowStamp)", "(x.State != OutboxState.Acknowledged)"),
-    ("Client trusts PushResult (C24)", CLIENT,
-     "if (unreachable || queue.Count > rejected)", "if (unreachable)"),
     ("Wallet update has no balance check", CLIENT,
      "w.Resource == resource && w.Spent + w.Returned + amount <= granted", "w.Resource == resource"),
     ("Client does not reapply local changes after a pull", CLIENT,

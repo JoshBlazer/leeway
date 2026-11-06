@@ -151,7 +151,7 @@ public class EscrowEndToEndTests
         Assert.Equal(OutcomeStatus.ProvisionalAccepted, (await a.Client.OutcomeOfAsync(over.OperationId))!.Status);
     }
 
-    /// <summary>Probes C24 and C25: on a poor signal, a push can report success having done nothing, or having done everything.</summary>
+    /// <summary>Probes C24 and C25: on a poor signal, a push can time out having done nothing, or having done everything.</summary>
     [Fact]
     public async Task A_timeout_is_reported_as_offline_and_loses_nothing_whether_or_not_the_server_applied_it()
     {
@@ -181,8 +181,8 @@ public class EscrowEndToEndTests
     }
 
     /// <summary>
-    /// Probe C24 on its own. Pulls still work here, so only the queue check can show that the push did nothing.
-    /// A sabotage run proved the test above could not: its fault also failed the pull.
+    /// Probe C24 on its own, with pulls still working. Up to Datasync 10.1.2, only the queue check could show that the
+    /// push did nothing. Since 10.2.0 the push also throws.
     /// </summary>
     [Fact]
     public async Task A_push_that_times_out_is_reported_as_offline_even_when_pulls_work()
@@ -201,8 +201,7 @@ public class EscrowEndToEndTests
     }
 
     /// <summary>
-    /// Upstream fixed #578 by making a timed-out push throw TimeoutException, in a release after the pinned 10.1.2.
-    /// Sync must report that as offline, not crash, so upgrading cannot break this contract.
+    /// Since Datasync 10.2.0 (#578), a timed-out push throws TimeoutException. Sync must report that as offline, not crash.
     /// </summary>
     [Fact]
     public async Task A_push_that_throws_a_timeout_exception_is_reported_as_offline()
@@ -211,7 +210,7 @@ public class EscrowEndToEndTests
         using Gate a = await Gate.OpenAsync(server, "gate-a");
         await a.Client.EditAsync<Zone>("north", e => e.Add(z => z.CheckIns, 1));
 
-        a.Fault.BeforeSend = request => request.Method == HttpMethod.Post ? throw new TimeoutException("as in the upstream fix") : Task.CompletedTask;
+        a.Fault.BeforeSend = request => request.Method == HttpMethod.Post ? throw new TimeoutException("as upstream does") : Task.CompletedTask;
         Assert.Equal(SyncState.Offline, (await a.Client.SyncAsync()).State);
         a.Fault.BeforeSend = null;
 

@@ -16,6 +16,6 @@ Each milestone ends with an exit check, `docs/walkthroughs/mN.md`, and a review 
 
 MySQL server tests are also done (ADR-0019).
 
-Still needed: upgrading to Datasync 10.2.0 when it ships; per-entity access control; compacting set tombstones; failover and throughput testing; and a real pilot.
+Datasync 10.2.0 is in too. Still needed: per-entity access control; compacting set tombstones; failover and throughput testing; and a real pilot.
 
 **Later layers:** MAUI Android client, velocity-based rebalancing, more invariant types.

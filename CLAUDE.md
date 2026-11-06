@@ -36,13 +36,14 @@ Tests run on Microsoft Testing Platform (ADR-0010). `dotnet test <path>` and VST
 
 ## Things that will bite you
 
-- Read `docs/design/datasync-integration.md` before touching sync code. In particular, `PushResult.IsSuccessful` can be true when nothing was sent (C24), and a resolver's merged write is unconditional (C10).
+- Read `docs/design/datasync-integration.md` before touching sync code. In particular, a retry after a timeout can conflict with the device's own write (C25), and a resolver's merged write is unconditional (C10).
 - The `tests/Leeway.Integration.Tests/Datasync` probes pin upstream behaviour, traps included. If one fails after an upgrade, re-read the design. Do not simply edit the test.
 - Datasync's sync lock is process-wide. Running one client inside another's push deadlocks.
 - Do not upgrade Verify past 32.x (ADR-0009) or suppress NuGet advisories (ADR-0008).
 - A snapshot test with no generated output passes without comparing anything. Check that a `*.verified.*` file exists.
 - When a test fails intermittently, keep the full output and find the cause. That is how C24 was found.
 - Soak the correct implementation before believing a mutant catch rate. A bug in the correct code looks like a 100% catch rate.
+- An upstream fix can leave a guard that nothing exercises. After an upgrade, re-run the sabotage cases: one that stops being caught may mean that.
 - A test passing first time proves little. Check that it can fail: the first sabotage run found three protections no test really covered.
 - Sabotage tools must fail loudly if no tests ran. One of ours once reported four false "survived" results for that reason.
 - A snapshot is only a promise about text: read a new one before accepting it.

@@ -16,7 +16,7 @@ python scripts/adapter-sabotage.py --hardening-only
 | Deleting entities | Done, delete wins | `HardeningTests`, 2 tests |
 | First-come ordering | Done, per device | `HardeningTests`, 2 tests, and the M6 test |
 | A production server database | MySQL 8.4 tested, at the maintainer's request (ADR-0019) | Every end-to-end test, plus `MySqlServerTests`, with `LEEWAY_TEST_MYSQL` set |
-| Datasync 10.2.0 | **Not done** | Not released as of 2026-11-05 |
+| Datasync 10.2.0 | Done | Probes C13, C24, and C25, and "Upgrading to 10.2.0" in the integration map |
 
 ## Authentication is secure by default
 

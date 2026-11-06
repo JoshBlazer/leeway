@@ -125,9 +125,8 @@ public sealed class EntityEdit<T> where T : OfflineEntity
 }
 
 /// <summary>
-/// Allows one sync at a time in the process, whichever client it belongs to. Datasync's own sync lock is meant to be
-/// process-wide already, but has a race between release and acquire when contexts overlap. Going one at a time avoids
-/// it. A client stuck on a slow network therefore delays other clients' syncs, though never their local writes.
+/// Allows one sync at a time in the process, whichever client it belongs to. Datasync's own sync lock is process-wide
+/// already (C23), and had a race between release and acquire until 10.2.0, so this costs nothing extra. A client stuck on a slow network therefore delays other clients' syncs, though never their local writes.
 /// </summary>
 internal static class LeewaySyncGate
 {
@@ -547,7 +546,7 @@ public sealed class LeewayClient<TContext>(Func<TContext> createContext, LeewayC
 
         await RecordOutcomesAsync(cancellationToken);
 
-        // Never trust PushResult alone. A push that times out reports success with the operation still queued (probe C24).
+        // A guard. Up to Datasync 10.1.2, a push that timed out reported success with the operation still queued (probe C24).
         await using TContext check = createContext();
         List<CommunityToolkit.Datasync.Client.Offline.OperationState> queue = await check.DatasyncOperationsQueue
             .Where(q => q.EntityType == typeof(LeewayOperationRow).FullName)

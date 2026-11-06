@@ -1,6 +1,6 @@
 # Datasync integration map
 
-**Target:** `CommunityToolkit.Datasync.*` 10.1.2 (tag `10.1.2`, commit `8d9e284`), read from source.
+**Target:** `CommunityToolkit.Datasync.*` 10.2.0 (tag `10.2.0`, commit `79d841b`). Read from source at 10.1.2, then the upstream fixes since.
 **Evidence:** every behaviour marked `C..` or `S..` is pinned by a test of that ID in
 `tests/Leeway.Integration.Tests/Datasync/`, running real HTTP against a real Kestrel server and real SQLite.
 Items marked *source* come from reading the code and have no test.
@@ -19,9 +19,9 @@ carrier for per-field merging and a good carrier for an **append-only operation 
 
 | # | Finding | Consequence for Leeway |
 |---|---|---|
-| 1 | **A push that times out reports `IsSuccessful == true`** with nothing sent and the operation still queued (C24) | Never trust `PushResult` alone: check the queue. Bad signal and no signal behave differently (C02) |
+| 1 | **Up to 10.1.2, a push that timed out reported `IsSuccessful == true`** with nothing sent and the operation still queued. 10.2.0 throws (C24) | Treat a timeout as offline. Leeway also still checks the queue |
 | 2 | **The write after a resolver merge is unconditional** (C09), so a third writer in the window is silently lost (C10) | `IConflictResolver` cannot be the place a merge is finalized |
-| 3 | **Completed work is recorded only at the end of a batch.** A mid-batch connection drop forgets successes (C13), and a lost response or timeout makes a device conflict with itself (C12, C25) | Delivery is at-least-once. Application must be idempotent |
+| 3 | **A lost response or timeout makes a device conflict with itself** (C12, C25). Up to 10.1.2, a mid-batch drop also forgot successes, which 10.2.0 fixes (C13) | Delivery is at-least-once. Application must be idempotent |
 | 4 | **Edits to a row are compacted** into one whole-row operation (C07) | The queue cannot carry intent. Leeway needs its own operation log |
 | 5 | **On a millisecond-precision store, a row sharing the delta token's millisecond is never pulled** (C19) | Silent convergence failure on SQLite, which is all Leeway tests on. The server must stamp strictly increasing `UpdatedAt` |
 | 6 | **The sync lock is process-wide**: queued local writes block during any push (C23) | An offline spend must not wait on the network, so it cannot go through a queued write |
@@ -62,15 +62,15 @@ These findings led to the design in [ADR-0012](../DECISIONS.md#adr-0012-carry-in
 | Situation | What `PushAsync` does | Evidence |
 |---|---|---|
 | Connection refused, DNS failure | **Throws** `HttpRequestException`, queue intact | C02 |
-| `HttpClient.Timeout` expires | **Returns success**, operation still queued, and a following pull throws | C24 |
+| `HttpClient.Timeout` expires | Throws `TimeoutException`, operation still queued, and a following pull throws. **Up to 10.1.2 it returned success** | C24 |
 | Server returns 409/412, no resolver | Returns failure, operation `Failed`, pull blocked for that type | C05, C06 |
 | Server applied it, connection lost before the response | Throws, and the retry self-conflicts with 412 (replace) or 409 (add) | C12, C15 |
-| Server applied it, client timed out waiting | **Returns success**, and the retry self-conflicts. With the default resolver, a single device with no other writers is now stuck | C25 |
-| Connection drops mid-batch | Throws. Earlier successes are not recorded on disk | C13 |
+| Server applied it, client timed out waiting | Throws `TimeoutException`, and the retry self-conflicts. With the default resolver, a single device with no other writers is now stuck | C25 |
+| Connection drops mid-batch | Throws. Earlier successes are saved, so the retry sends only the rest. **Up to 10.1.2 they were forgotten** | C13 |
 
 `PullAsync` differs: with no network it **returns** `IsSuccessful == false` with a local exception (C03).
 
-The cause of the timeout case: push runs through a TPL Dataflow `ActionBlock`, which treats an
+The cause of the old timeout behaviour: push runs through a TPL Dataflow `ActionBlock`, which treats an
 `OperationCanceledException` from its delegate as cooperative cancellation rather than a fault (*source:*
 `QueueHandler<T>`; behaviour: C24).
 
@@ -87,7 +87,7 @@ MySQL is also tested, for the server only. See ADR-0019.
   (*source*). Add `IsConcurrencyToken()` on `Version`.
 - Datasync's documentation says **not to use SQLite for production services**. Leeway uses it for samples and tests
   only (ADR-0003). Other providers are unverified, and see the honest limit in `docs/RISKS.md`.
-- Datasync 10.1.2 resolves a vulnerable native SQLite transitively. See ADR-0008; C22 guards the fix.
+- Datasync 10.1.2 resolved a vulnerable native SQLite transitively, and 10.2.0 does not. See ADR-0008; C22 guards this.
 
 ## Other limits, from source
 
@@ -105,9 +105,9 @@ others are design requests or narrower, so they are held to avoid flooding a sma
 
 | # | Proposal | Evidence | Workaround | Upstream |
 |---|---|---|---|---|
-| U1 | A timed-out push should report failure, not success | C24, C25 | Check the queue after push | [#578](https://github.com/CommunityToolkit/Datasync/issues/578): **fixed upstream, unreleased** |
-| U2 | Resolver `Client` result should send `If-Match` with the server version just received | C09, C10 | Merge on the server; rebase (C11) | [#579](https://github.com/CommunityToolkit/Datasync/issues/579): **fixed upstream, unreleased** |
-| U3 | Persist each operation's completion as it happens | C13 | Idempotent op table | Held. The #578 fix also persists progress when a push fails, which may resolve this |
+| U1 | A timed-out push should report failure, not success | C24, C25 | Check the queue after push | [#578](https://github.com/CommunityToolkit/Datasync/issues/578): **fixed in 10.2.0** |
+| U2 | Resolver `Client` result should send `If-Match` with the server version just received | C09, C10 | Merge on the server; rebase (C11) | [#579](https://github.com/CommunityToolkit/Datasync/issues/579): **fixed in 10.2.0**, as a new `Merged` result |
+| U3 | Persist each operation's completion as it happens | C13 | Idempotent op table | **Resolved in 10.2.0** by the #578 fix, for a failed push |
 | U4 | Close the same-millisecond delta gap, for example `ge` with client-side dedupe | C19 | Strictly increasing server stamps (ADR-0013) | Held: see below |
 | U5 | Order queued operations by `Sequence` | *source* | Order-independent application | Held |
 | U6 | Scope the sync lock per context or store, not per process | C23 | Unqueued local writes | Held |
@@ -123,17 +123,20 @@ It needs several contexts syncing in one process. It appeared once, in CI, on a 
 
 **Leeway's defence:** `LeewaySyncGate` lets one sync run at a time across every client in the process (`Clients_in_one_process_sync_one_at_a_time`). So a client stuck on a slow network delays other clients' syncs in that process, but never their local writes. Using `OfflineDbContext` directly bypasses this, so the integration test assembly runs sequentially.
 
-## When upgrading past 10.1.2
+## Upgrading to 10.2.0
 
-The maintainer fixed #578 within hours, in [PR #581](https://github.com/CommunityToolkit/Datasync/pull/581), merged 2026-11-05 and not yet released. Read from its description and diff, not tested against a build of it:
+10.2.0 was released on 2026-11-06. The probes predicted the result: of everything in the suite, only C13, C24, and C25 failed.
 
-- A timed-out push will **throw `TimeoutException`** instead of reporting success. `LeewayClient` and the sample already treat that as offline, and a test covers it.
-- Completed operations will be saved before the exception is rethrown, so a mid-batch drop should no longer forget them.
-- **Probes C13, C24, and C25 will then fail. That is what they are for.** Update them to the new behaviour, and keep Leeway's queue check, because it is still correct and harmless.
+| Upstream change | Effect here |
+|---|---|
+| [PR #581](https://github.com/CommunityToolkit/Datasync/pull/581): a timed-out push throws `TimeoutException`, and completed work is saved first | C13, C24, and C25 updated. `LeewayClient` already treated it as offline |
+| [PR #582](https://github.com/CommunityToolkit/Datasync/pull/582): a conditional `ConflictResolutionResult.Merged` | ADR-0012 stands, because a resolver still sees rows and not intent. `Client` still force-writes, so C09 and C10 still pass |
+| [PR #599](https://github.com/CommunityToolkit/Datasync/pull/599): the sync lock race | `LeewaySyncGate` and the sequential test assembly stay. The lock is still process-wide (C23), so the gate costs nothing extra |
+| SQLitePCLRaw 3.x | The advisory is fixed upstream, so ADR-0008's SQLite pins are gone, and consumers get the fix too. C22 and `scripts/package-check.py` check it |
 
-The maintainer has said they will try to release a 10.2.0 soon. Once it includes these fixes, `LeewaySyncGate` and the sequential test assembly can be reconsidered, though the gate does no harm.
+**Leeway's queue check is now a guard that nothing exercises.** No known path through 10.2.0 reports success with an operation still queued, so removing the check fails no test, as a sabotage run confirmed. It stays because it is one query, and C24 would flag the old behaviour returning on an upgrade. The sabotage case for it was removed, because it can no longer be caught.
 
-The maintainer also fixed #579, in [PR #582](https://github.com/CommunityToolkit/Datasync/pull/582), adding a conditional `ConflictResolutionResult.Merged`. That does not change ADR-0012, because a resolver still sees only rows and not intent, so a counter or escrow could not use it. `Client` still force-writes, so C09 and C10 should keep passing. It could help an application with plain whole-row entities.
+**Not addressed upstream, by design:** a timeout after the server applied the write still self-conflicts on retry (C25). Leeway's operation table handles this.
 
 ## Questions from M0, and what M3 and M4 did
 
