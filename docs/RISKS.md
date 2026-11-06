@@ -18,8 +18,11 @@
 | Provisional order | Fixed within a device (ADR-0018) | Two gates still race, in the order they reconnect. One round trip per operation has not been measured over real latency |
 | Rejected operations | Handled | Reported as `Failed`, they do not block pulls, and `DiscardRefusedAsync` removes them |
 | Authentication misconfiguration | Handled at startup | The server will not start without a decision. There is no per-entity access control |
-| Server stamp ordering outside SQLite | Open | ADR-0013 relies on a single writer. Other providers unverified |
-| SQLite is not recommended for production Datasync servers | Open: **limits what Leeway can claim** | ADR-0003. State verified providers. A real deployment needs a provider Leeway has not tested |
+| Server stamp ordering outside SQLite | Handled on MySQL (ADR-0019) | A row lock makes stamp order commit order. Other databases are unverified |
+| One lock for all writes | Open | Simple and correct, but it limits write throughput, which has not been measured |
+| Failover and separate machines | Open | Tests run two servers in one OS process, on one database |
+| The MySQL provider's GPL licence | Handled | Used in tests only, and never shipped. Applications choose their own provider |
+| SQLite is not recommended for production Datasync servers | Handled in part | MySQL is now tested too (ADR-0019) |
 | Offline writes blocked by an in-flight push | Solved in M3 | C23: writes go to an unqueued outbox, tested end to end |
 | Avalonia and MAUI platform differences; NativeAOT on mobile | Open | CI builds the sample on three OSes and runs tests on Linux. **The desktop window has only been run for real on Windows, and macOS has no test run** |
 | Package IDs are free but not reserved | Open | ADR-0007 |

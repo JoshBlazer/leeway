@@ -8,7 +8,7 @@ Start each session by reading `docs/PROGRESS.md`, this file, and the current mil
 - **Design notes before code** for hard modules (escrow protocol, HLC, merge semantics, simulator, generator), with signatures and failing tests first.
 - **Decisions go in `docs/DECISIONS.md`.** Each new runtime dependency needs an entry. If a decision is irreversible or contradicts the brief, stop and ask.
 - **Honest limits:** document what cannot be guaranteed offline as prominently as what can.
-- **Hard constraints:** zero cost (check licences, see ADR-0009); extend, do not fork, Datasync; SQLite only in samples and tests; MIT.
+- **Hard constraints:** zero cost (check licences, see ADR-0009); extend, do not fork, Datasync; SQLite in samples and on devices, with MySQL allowed for server tests only (ADR-0019); MIT.
 - Core logic stays pure and fully tested before integration. `Leeway.Core` has no Datasync dependency.
 - Small conventional commits. Append to `docs/PROGRESS.md` at the end of each session. Stop at the end of each milestone and wait for review.
 - **Git identity:** commit and push only as `Joshua Willie <joshblazerwillie@gmail.com>` (GitHub: `JoshBlazer`). Add no `Co-Authored-By` trailers or tool attribution in commits or PRs unless the maintainer explicitly asks. The README's AI-assistance disclosure stays.
@@ -28,6 +28,7 @@ dotnet run --project mutants/Leeway.Mutants -c Release -- catch
 dotnet run --project mutants/Leeway.Mutants -c Release -- soak 10000 1
 python scripts/adapter-sabotage.py                              # Clean tree. Slow: about an hour
 python scripts/adapter-sabotage.py --hardening-only             # Much faster
+LEEWAY_TEST_MYSQL="Server=127.0.0.1;Port=3306;User=root;Password=x" dotnet test --project tests/Leeway.Integration.Tests
 python scripts/package-check.py                                 # Real packages, in an outside project
 ```
 
@@ -47,4 +48,5 @@ Tests run on Microsoft Testing Platform (ADR-0010). `dotnet test <path>` and VST
 - A snapshot is only a promise about text: read a new one before accepting it.
 - Look at rendered output too. The first demo GIF passed every assertion and had a blank dashboard.
 - Do not assume a device's operations arrive in order. That made a test pass by luck.
+- On MySQL, the first plain read in a transaction fixes its snapshot, so take the lock before any read.
 - Change entities only through `LeewayClient`. Direct EF saves are refused, because a queued whole-row write would block pulls (C06).

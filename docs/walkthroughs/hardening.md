@@ -15,7 +15,7 @@ python scripts/adapter-sabotage.py --hardening-only
 | Discarding a refused operation | Done | `HardeningTests`, 3 tests |
 | Deleting entities | Done, delete wins | `HardeningTests`, 2 tests |
 | First-come ordering | Done, per device | `HardeningTests`, 2 tests, and the M6 test |
-| Other server databases | **Not done** | Hard constraint 4 says SQLite only |
+| A production server database | MySQL 8.4 tested, at the maintainer's request (ADR-0019) | Every end-to-end test, plus `MySqlServerTests`, with `LEEWAY_TEST_MYSQL` set |
 | Datasync 10.2.0 | **Not done** | Not released as of 2026-11-05 |
 
 ## Authentication is secure by default
@@ -62,6 +62,16 @@ The client sends everything at once, unordered: CAUGHT
 ```
 
 Unlike M3's first run, none survived. One first gave no result, because the sabotaged code did not compile, and the script correctly refused to count that either way.
+
+## MySQL
+
+```
+LEEWAY_TEST_MYSQL="Server=127.0.0.1;Port=3306;User=root;Password=x" dotnet test --project tests/Leeway.Integration.Tests
+```
+
+All the existing end-to-end tests passed on MySQL with no changes to them. The value was in what SQLite could never show. `MySqlServerTests` runs two servers on one database, and found two real bugs, a deadlock and a stale first write, described in `docs/design/hardening.md`. With no cross-process lock, those tests fail.
+
+With `LEEWAY_TEST_MYSQL` unset, those tests are skipped, which is why a run with no MySQL reports skips.
 
 ## Limits
 

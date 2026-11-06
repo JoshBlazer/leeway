@@ -14,6 +14,8 @@ Each milestone ends with an exit check, `docs/walkthroughs/mN.md`, and a review 
 
 **Before real use.** Done: device authentication, retention of operations, discarding refused operations, entity deletion, and first-come ordering within a device (`docs/walkthroughs/hardening.md`).
 
-Still needed: testing server databases other than SQLite, which **hard constraint 4 currently rules out, so that is the maintainer's decision**; upgrading to Datasync 10.2.0 when it ships; per-entity access control; compacting set tombstones; and a real pilot.
+MySQL server tests are also done (ADR-0019).
+
+Still needed: upgrading to Datasync 10.2.0 when it ships; per-entity access control; compacting set tombstones; failover and throughput testing; and a real pilot.
 
 **Later layers:** MAUI Android client, velocity-based rebalancing, more invariant types.

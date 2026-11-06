@@ -20,6 +20,7 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 **Status:** Accepted.
 **Decision:** No other database in samples or tests.
 **Honest limit:** Datasync's own docs warn against SQLite for production services. Passing tests here say nothing about other server databases, so Leeway will state which server providers it has verified, which at first is only this one.
+**Amended by ADR-0019:** MySQL is also allowed, for server-side tests only, at the maintainer's request.
 
 ## ADR-0004: Hybrid logical clocks for last-writer-wins
 
@@ -110,7 +111,7 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 **Status:** Accepted by the maintainer, 2026-11-04, and built in M3. Goes with ADR-0012.
 **Context:** The pull filter is `updatedAt gt <token>`, and SQLite stores `UpdatedAt` in milliseconds, so a later commit in the token's millisecond is never delivered (C19). That breaks simulator property 2 (convergence) with no error anywhere.
 **Decision:** Leeway's server repository stamps `max(now, lastStamp + 1ms)` inside the write transaction. SQLite's single writer makes this sufficient.
-**Honest limit:** This relies on commit order matching stamp order. A server database with concurrent writers needs more care, and that is another reason ADR-0003 limits what is verified.
+**Honest limit:** This relies on commit order matching stamp order. On SQLite, the single writer gives that. On MySQL, ADR-0019's row lock does. Any other database needs its own answer.
 
 ## ADR-0014: Stamp admission clamps to the drift limit and keeps a device's stamps in sequence order
 
@@ -146,4 +147,15 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 **Context:** The M6 demo showed a device's provisional spends competing in arbitrary order, because Datasync's queue has no `ORDER BY`.
 **Decision:** The client copies one operation into the queue, pushes, and repeats, stopping at the first with no answer.
 **Consequence:** One round trip per operation, which has not been measured over real latency. Datasync's newer "completed operations are saved" behaviour matters less. The simulator still reorders, because safety must not depend on this.
+
+## ADR-0019: Test the server on MySQL too, for concurrent writers
+
+**Status:** Accepted, at the maintainer's request. It relaxes hard constraint 4 for server-side tests only. Samples and devices stay on SQLite.
+**Context:** Datasync advises against SQLite for production servers, and SQLite has one writer, so it could never show what happens with several server processes.
+**Decision:**
+- With `LEEWAY_TEST_MYSQL` set, the server side of every end-to-end test runs on MySQL, and CI has a job for this. The probes stay on SQLite.
+- On MySQL, each write first locks the authority row with `SELECT ... FOR UPDATE`. Writes from all server processes go one at a time, so stamp order is commit order, as ADR-0013 needs.
+- The server refuses a case-insensitive collation, MySQL's default, because `gate-a` and `GATE-A` would match in the access checks.
+**Provider:** Oracle's `MySql.EntityFrameworkCore`, because Pomelo stops at EF Core 9. It is GPL-2.0-only WITH Universal-FOSS-exception-1.0, free of charge, and test-only: **it never ships in Leeway's MIT packages**. Applications choose their own provider. The server library recognizes MySQL by provider name.
+**Consequence:** All writes to a database go through one lock, which limits write throughput. That has not been measured.
 

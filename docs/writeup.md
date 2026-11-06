@@ -65,7 +65,7 @@ The second one shaped the design. Instead of merging rows on the client, a Leewa
 
 Leeway isn't ready for production, and I'd rather say so here than have you find out later.
 
-- **Only SQLite with one server process is tested**, and Datasync itself advises against SQLite for production servers.
+- **Only SQLite and MySQL are tested on the server.** Several servers on one MySQL database work in tests, but all writes go through one lock, and failover is untested.
 - **Authentication is a hook you fill in.** The server won't start until you decide, but it takes an identity from your app rather than issuing credentials.
 - **A modified client can cheat.** The offline guarantee assumes the wallet code runs as written. Cheating shows up as an overdraft, after the fact.
 - **A device that never comes back keeps its lease** until an admin writes it off. If it was only offline, its spends can then break the limit, and they are reported.

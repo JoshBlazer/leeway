@@ -86,7 +86,7 @@ Velocity-based rebalancing is a later layer.
 - **Provisional means provisional.** A person at a gate told "provisional" may later be rejected.
 - **Authentication is the application's.** The server requires a decision and enforces it (`hardening.md`), but it takes the identity from the app.
 - **A malicious or modified client is out of scope.** The guarantee assumes the wallet code runs as written. A dishonest device shows up as an overdraft.
-- **SQLite with one server process.** The write gate is in-process, and only this setup is tested (ADR-0003, ADR-0013).
+- **SQLite, or MySQL with a row lock.** Only these are tested (ADR-0019). All writes to a database go one at a time.
 - **A rejected operation stays queued until discarded.** If the server refuses an operation outright, it is retried on every push and reported as `SyncState.Failed`. `DiscardRefusedAsync` removes it (`hardening.md`). It does not block pulls.
 - **Grants need a connection.** A device with no lease and no signal can only make provisional spends, so it should lease ahead of time.
 - **Local write speed is only roughly measured,** at about 8 to 19 ms a write, with SQLite pooling on. See `docs/walkthroughs/m6.md`. There is no benchmark suite.

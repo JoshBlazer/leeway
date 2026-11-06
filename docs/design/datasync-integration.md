@@ -79,6 +79,8 @@ the sample reached this path. See `docs/walkthroughs/m0.md`.
 
 ## SQLite on the server
 
+MySQL is also tested, for the server only. See ADR-0019.
+
 - SQLite cannot compare or order `DateTimeOffset`, and pull does both on `UpdatedAt`. Store Unix milliseconds
   through a value converter (`GateKeeperDbContext`), as Datasync's own test suite does.
 - `BaseEntityTableData` declares no concurrency token, so the repository's version check is check-then-write

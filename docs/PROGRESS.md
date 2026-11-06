@@ -118,11 +118,23 @@ The maintainer said to do all of: merge M6, approve the write-up, and carry on w
 **Not done, and why**
 
 - **Datasync 10.2.0:** not released as of 2026-11-05. Upgrade when it ships, following "When upgrading" in the integration map.
-- **Other server databases:** hard constraint 4 says SQLite only. This needs the maintainer's decision.
+- **Other server databases:** the maintainer then allowed MySQL. See the next entry.
 
-**State:** on branch `m7-hardening`, on a PR awaiting review. Not merged.
-
-**Next:** merge on the maintainer's word, then the upgrade. After that, per-entity access control, tombstone compaction, and a real pilot.
+**State:** merged (PR #5).
 
 **Simulation metrics:** longest run 200,000 locally, and 200,000 in nightly CI from a random seed, no failures; mutant catch rate 19 of 19; shrunk regressions 19.
+
+## 2026-11-05: Session 2, continued, MySQL
+
+**Done**
+
+- The maintainer relaxed constraint 4 for server tests, suggesting MySQL (ADR-0019). Every end-to-end test can now run its server on MySQL, and CI does so. Multi-server tests were added.
+- Two bugs SQLite could not show were found and fixed: a lock-upgrade deadlock, and a stale first write.
+- The maintainer left posting the write-up to my judgement. It stays in the repository, linked from the README, because posting elsewhere under their name is their call. Repository topics were added.
+
+**State:** on branch `mysql-server-tests`, on a PR awaiting review. Not merged.
+
+**Next:** merge on the maintainer's word. Upgrade when Datasync 10.2.0 ships, which was not yet released on 2026-11-05. Then per-entity access control, tombstone compaction, failover and throughput testing, and a real pilot.
+
+**Simulation metrics:** unchanged. Mutant catch rate 19 of 19.
 

@@ -44,11 +44,11 @@ someEntity.Stock--;   // LEE001
 
 | Milestone | State | Proving command | Last result |
 |---|---|---|---|
-| All tests | CI (Linux), and locally on Windows | `dotnet test --solution Leeway.slnx -c Release` | 188 of 188 pass |
+| All tests | CI (Linux), and locally on Windows | `dotnet test --solution Leeway.slnx -c Release` | 193 pass, of which 4 need MySQL and are skipped without it |
 | **M0** Datasync spike | Done | `dotnet test --project tests/Leeway.Integration.Tests` (the spike itself became GateKeeper) | See M3 |
 | **M1** `Leeway.Core` | Done | `dotnet test --project tests/Leeway.Property.Tests` | 35 of 35 pass |
 | **M2** Simulator and mutants | Done | `dotnet run --project mutants/Leeway.Mutants -c Release -- catch` | 19 of 19 caught |
-| **M3** Escrow end to end | Done | `dotnet test --project tests/Leeway.Integration.Tests` | 82 of 82 pass |
+| **M3** Escrow end to end | Done | `dotnet test --project tests/Leeway.Integration.Tests` | 87 pass, with a CI job that also runs them on MySQL |
 | **M4** Per-field merging | Done | Same | Same |
 | **M5** Generator and analyzer | Done | `dotnet test --project tests/Leeway.Analyzers.Tests` | 37 of 37 pass, plus 14 of 14 for the generator |
 | Real NuGet packages | CI (Linux), and locally on Windows | `python scripts/package-check.py` | `PACKAGE CHECK PASSED` |
@@ -87,7 +87,7 @@ What Leeway cannot guarantee is as important as what it can.
   A ticket scanned at two offline gates can only be *detected* on reconnect.
 - **A device that never returns still holds its lease.** That quota is stranded until an admin writes it off, and if the device was only offline, its spends can then break the rule. They are reported, not hidden ([ADR-0005](docs/DECISIONS.md)).
 - **A hybrid logical clock limits the damage from clock skew.** It cannot know which of two concurrent edits a person meant to win.
-- **Only SQLite with one server process is tested.** Datasync's own docs advise against SQLite for production services, so **Leeway is not ready for production servers** ([ADR-0003](docs/DECISIONS.md)).
+- **Server databases tested: SQLite, and MySQL 8.4.** Several servers on one MySQL database are tested, but only as two servers in one process, with no replicas or failover, and all writes go through one lock ([ADR-0019](docs/DECISIONS.md)). Leeway has never run in a real deployment, so **it is not ready for production**.
 - **Authentication is a hook you must fill in.** The server will not start until you choose. It takes an identity from your app, and has no per-entity access control. The GateKeeper demo runs with it off.
 - **A modified client can cheat.** The offline guarantee assumes the wallet code runs as written. A dishonest device shows up as an overdraft.
 - **Some state grows without limit.** Operations can be pruned safely, but set tombstones and counter entries cannot.
