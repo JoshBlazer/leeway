@@ -2,7 +2,7 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
     <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
-    <DatasyncVersion>10.1.2</DatasyncVersion>
+    <DatasyncVersion>10.2.0</DatasyncVersion>
     <EfCoreVersion>10.0.14</EfCoreVersion>
     <AvaloniaVersion>12.1.5</AvaloniaVersion>
   </PropertyGroup>
@@ -14,9 +14,6 @@
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="$(EfCoreVersion)" />
   </ItemGroup>
   <ItemGroup Label="Transitive security pins (see ADR-0008)">
-    <PackageVersion Include="SQLitePCLRaw.bundle_e_sqlite3" Version="2.1.14" />
-    <PackageVersion Include="SQLitePCLRaw.core" Version="2.1.14" />
-    <PackageVersion Include="SQLitePCLRaw.lib.e_sqlite3" Version="2.1.14" />
     <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="10.0.14" />
   </ItemGroup>
   <ItemGroup Label="Samples only">

@@ -2,11 +2,12 @@
 """Checks that the real NuGet packages work, by compiling an outside project against them.
 
 A generator can pass every in-process test, yet fail to load from a package. This packs the libraries into a local
-feed, builds scripts/package-consumer against that feed, and checks three things: the generated API compiled, LEE001
-and LEE002 appeared, and no analyzer failed to load.
+feed, builds scripts/package-consumer against that feed, and checks four things: the generated API compiled, LEE001
+and LEE002 appeared, no analyzer failed to load, and the consumer gets a patched native SQLite.
 
 Usage, from the repository root:   python scripts/package-check.py
 """
+import json
 import os
 import shutil
 import subprocess
@@ -48,12 +49,19 @@ def main():
         if "CS8032" in build.stdout or "AD0001" in build.stdout:
             failures.append("an analyzer or generator failed to load or crashed")
 
+        # Pins are not inherited through a package, so what a consumer really gets must be patched (ADR-0008).
+        assets = json.loads((consumer / "obj" / "project.assets.json").read_text(encoding="utf-8"))
+        versions = dict(name.split("/") for name in assets["libraries"])
+        sqlite = versions.get("SQLite", "0")
+        if tuple(int(part) for part in sqlite.split(".")) < (3, 50, 2):
+            failures.append(f"a consumer gets native SQLite {sqlite}, below the CVE-2025-6965 fix")
+
         if failures:
             print(build.stdout[-3000:])
             print("FAILED:", "; ".join(failures))
             return 1
 
-        print("Generated API compiled, and LEE001 and LEE002 appeared.")
+        print(f"Generated API compiled, LEE001 and LEE002 appeared, and a consumer gets native SQLite {sqlite}.")
         print("PACKAGE CHECK PASSED")
         return 0
 

@@ -326,9 +326,9 @@ public class ClientProbes
         Assert.Equal(412, Assert.Single(retry.FailedRequests).Value.StatusCode);
     }
 
-    /// <summary>Why a mid-batch drop is worse than it looks: completed work is only recorded at the end of the batch.</summary>
+    /// <summary>Up to 10.1.2, this forgot the operation that had succeeded, and the retry conflicted with it. Fixed in 10.2.0 (#581).</summary>
     [Fact]
-    public async Task C13_a_connection_drop_mid_batch_forgets_operations_that_already_succeeded()
+    public async Task C13_a_connection_drop_mid_batch_keeps_the_progress_already_made()
     {
         await using ProbeServer server = await ProbeServer.StartAsync();
         await server.SeedAsync("i1");
@@ -343,15 +343,16 @@ public class ClientProbes
         await Assert.ThrowsAsync<HttpRequestException>(() => client.NewContext().PushAsync());
         client.Fault.BeforeSend = null;
 
-        // One row reached the server, yet both operations are still queued on disk.
+        // One row reached the server, and only the other operation is still queued on disk.
         int applied = await server.WithDbAsync(db => db.Items.AsNoTracking().CountAsync(x => x.A != null));
         Assert.Equal(1, applied);
-        Assert.Equal(2, await client.NewContext().DatasyncOperationsQueue.CountAsync());
+        Assert.Equal(1, await client.NewContext().DatasyncOperationsQueue.CountAsync());
 
-        // After a restart, the retry therefore self-conflicts on the one that had already succeeded.
+        // After a restart, the retry sends only that one.
         PushResult retry = await client.NewContext().PushAsync();
+        Assert.True(retry.IsSuccessful);
         Assert.Equal(1, retry.CompletedOperations);
-        Assert.Equal(412, Assert.Single(retry.FailedRequests).Value.StatusCode);
+        Assert.Equal(2, await server.WithDbAsync(db => db.Items.AsNoTracking().CountAsync(x => x.A != null)));
     }
 
     /// <summary>The design chosen in ADR-0012: append-only rows with client-assigned IDs make retries harmless.</summary>
@@ -582,11 +583,11 @@ public class ClientProbes
 
     /// <summary>
     /// Found by a flaky exit check. A timeout is an OperationCanceledException, which the push's ActionBlock treats
-    /// as cooperative cancellation rather than a fault. So on a bad signal, unlike no signal (C02), PushAsync reports
-    /// success having done nothing. Callers must check the queue, not PushResult.IsSuccessful.
+    /// as cooperative cancellation rather than a fault. So up to 10.1.2, PushAsync reported success having done nothing.
+    /// 10.2.0 throws TimeoutException instead (#581).
     /// </summary>
     [Fact]
-    public async Task C24_a_push_that_times_out_reports_success_with_the_operation_still_queued()
+    public async Task C24_a_push_that_times_out_throws_with_the_operation_still_queued()
     {
         await using ProbeServer server = await ProbeServer.StartAsync();
         await server.SeedAsync("i1");
@@ -595,23 +596,22 @@ public class ClientProbes
         await client.EditAsync("i1", x => x.A = "never sent");
 
         client.Fault.Hang = true;
-        PushResult push = await client.NewContext().PushAsync();
+        await Assert.ThrowsAsync<TimeoutException>(() => client.NewContext().PushAsync());
 
-        Assert.True(push.IsSuccessful); // The trap.
-        Assert.Equal(0, push.CompletedOperations);
-        Assert.Empty(push.FailedRequests);
         DatasyncOperation op = await client.NewContext().DatasyncOperationsQueue.SingleAsync();
         Assert.Equal(OperationState.Pending, op.State);
         Assert.Null((await server.WithDbAsync(d => d.Items.AsNoTracking().SingleAsync(x => x.Id == "i1"))).A);
 
-        // A caller that trusts IsSuccessful goes on to pull, and gets an exception it had no reason to expect.
+        // The operation is still queued, so a pull of that type is still refused.
         await Assert.ThrowsAsync<DatasyncException>(() => client.NewContext().PullAsync([typeof(ClientItem)], new PullOptions()));
     }
 
     /// <summary>
     /// C24 and C12 combined, also found under load: the server applies the write, the client times out waiting
-    /// for the response, and the push reports success. The retry then conflicts with the device's own write.
+    /// for the response. The retry then conflicts with the device's own write.
     /// So on a poor signal, one device with no concurrent writers can end up stuck with the default resolver.
+    /// 10.2.0 makes the first push throw rather than report success, and by design leaves the conflict, because it is
+    /// inherent to at-least-once delivery.
     /// </summary>
     [Fact]
     public async Task C25_a_timeout_after_the_server_applied_the_write_leaves_the_device_conflicting_with_itself()
@@ -623,11 +623,9 @@ public class ClientProbes
         await client.EditAsync("i1", x => x.A = "applied");
 
         client.Fault.AfterSend = async (_, _) => await Task.Delay(TimeSpan.FromSeconds(5));
-        PushResult first = await client.NewContext().PushAsync();
+        await Assert.ThrowsAsync<TimeoutException>(() => client.NewContext().PushAsync());
         client.Fault.AfterSend = null;
 
-        Assert.True(first.IsSuccessful);
-        Assert.Equal(0, first.CompletedOperations);
         Assert.Equal("applied", (await server.WithDbAsync(d => d.Items.AsNoTracking().SingleAsync(x => x.Id == "i1"))).A);
         Assert.Equal(1, await client.NewContext().DatasyncOperationsQueue.CountAsync());
 
@@ -637,7 +635,7 @@ public class ClientProbes
         Assert.Equal(412, Assert.Single(retry.FailedRequests).Value.StatusCode);
     }
 
-    /// <summary>Guards ADR-0008: the pinned native SQLite must be at or above the CVE-2025-6965 fix.</summary>
+    /// <summary>Guards ADR-0008: the native SQLite that Datasync brings must be at or above the CVE-2025-6965 fix.</summary>
     [Fact]
     public async Task C22_the_loaded_native_sqlite_is_patched_for_CVE_2025_6965()
     {
