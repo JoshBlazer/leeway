@@ -78,7 +78,7 @@ All three passed every unit and property test that existed at the time. The two 
 
 ## Mutation corpus
 
-`ProtocolParts` holds the replaceable decisions as delegates, with the real functions as defaults. A mutant is a named change to those parts. Catch rate is caught mutants divided by all mutants, searching up to a fixed number of seeds. The mutants must be plausible mistakes, and the corpus must include those the brief names plus each M0 trap.
+`ProtocolParts` holds the replaceable decisions as delegates, with the real functions as defaults. A mutant is a named change to those parts. Catch rate is caught mutants divided by all mutants, searching up to a fixed number of seeds. The mutants must be plausible mistakes, and the corpus must include each M0 trap.
 
 **A 100% catch rate only means the simulator catches these mutants.** It says nothing about the mistakes nobody thought of. It also says nothing about the adapters, which `scripts/adapter-sabotage.py` tests instead.
 
