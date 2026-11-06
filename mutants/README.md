@@ -1,6 +1,6 @@
 # Mutants
 
-Deliberately broken implementations that measure how strong the simulator is (brief §5.3). `Leeway.Mutants/MutantCorpus.cs` lists them, with the plausible mistake each one models. They include the three the brief names, each trap found in M0, and unsafe retention.
+Deliberately broken implementations that measure how strong the simulator is. `Leeway.Mutants/MutantCorpus.cs` lists them, with the plausible mistake each one models. They include each trap found in M0, and unsafe retention.
 
 ```
 dotnet run --project mutants/Leeway.Mutants -c Release -- catch

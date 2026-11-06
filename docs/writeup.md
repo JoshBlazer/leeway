@@ -53,7 +53,7 @@ To check that the simulator can catch mistakes, I also gave it 18 deliberately b
 
 ## What the underlying toolkit does
 
-Building on Datasync meant testing what it really does, and I pinned that behaviour with tests. A few results surprised me, and I reported them upstream. The maintainer fixed each one quickly, some within hours:
+Building on Datasync meant testing what it really does, and I pinned that behaviour with tests. A few results surprised me, and I reported them upstream. Datasync's maintainer fixed each one quickly, some within hours:
 
 - A push that timed out reported success, with nothing sent ([#578](https://github.com/CommunityToolkit/Datasync/issues/578)).
 - A conflict resolver's merged write was unconditional, so it could silently lose a concurrent update ([#579](https://github.com/CommunityToolkit/Datasync/issues/579)).

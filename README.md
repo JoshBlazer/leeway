@@ -77,7 +77,7 @@ explained in the [integration map](docs/design/datasync-integration.md), and Lee
 - **A poor signal alone can leave one device in a conflict with itself**, when the server applied a write but the response never arrived (C12, C25).
 - **On a millisecond-precision store such as SQLite, a row sharing the sync token's millisecond is never pulled** (C19).
 
-Two are filed upstream: the maintainer fixed both [#578](https://github.com/CommunityToolkit/Datasync/issues/578) and [#579](https://github.com/CommunityToolkit/Datasync/issues/579) in 10.2.0. As a result, [ADR-0012](docs/DECISIONS.md) chooses an append-only operation log with merging done on the server, rather than a client conflict resolver alone.
+Two are filed upstream: Datasync's maintainer fixed both [#578](https://github.com/CommunityToolkit/Datasync/issues/578) and [#579](https://github.com/CommunityToolkit/Datasync/issues/579) in 10.2.0. As a result, [ADR-0012](docs/DECISIONS.md) chooses an append-only operation log with merging done on the server, rather than a client conflict resolver alone.
 
 ## Honest limits
 

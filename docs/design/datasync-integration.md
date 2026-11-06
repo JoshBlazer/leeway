@@ -98,7 +98,7 @@ MySQL is also tested, for the server only. See ADR-0019.
   another's push deadlocks. **The M2 simulator therefore models the protocol on `Leeway.Core` instead of running N real
   Datasync clients in-process.** Integration tests run devices sequentially.
 
-## Upstream proposals (constraint 3)
+## Upstream proposals
 
 Only the two clearest are filed: deterministic, independent of the database, and with no reasonable case for the current behaviour. The
 others are design requests or narrower, so they are held to avoid flooding a small team. Keyword searches found no existing issue for U1 to U4 or U6, which does not prove there is none. Leeway works around each one regardless.
@@ -117,7 +117,7 @@ others are design requests or narrower, so they are held to avoid flooding a sma
 
 ## A race in Datasync's lock
 
-`AsyncLockDictionary` disposes an entry when its count reaches 0, but the check is not atomic with another caller's `GetOrAdd` and increment. That caller can be left with a disposed lock. From the code, it also looks possible for two callers to hold the "exclusive" lock at once, though that has not been observed. Reported as [#596](https://github.com/CommunityToolkit/Datasync/issues/596), and fixed by the maintainer in [PR #599](https://github.com/CommunityToolkit/Datasync/pull/599), not yet released.
+`AsyncLockDictionary` disposes an entry when its count reaches 0, but the check is not atomic with another caller's `GetOrAdd` and increment. That caller can be left with a disposed lock. From the code, it also looks possible for two callers to hold the "exclusive" lock at once, though that has not been observed. Reported as [#596](https://github.com/CommunityToolkit/Datasync/issues/596), and fixed in 10.2.0 by [PR #599](https://github.com/CommunityToolkit/Datasync/pull/599).
 
 It needs several contexts syncing in one process. It appeared once, in CI, on a probe test. A tight loop did not reproduce it, which fits the analysis, since a busy lock rarely reaches 0.
 

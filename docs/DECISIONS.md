@@ -1,11 +1,11 @@
 # Decision records
 
-Status is **Accepted** or **Proposed** (awaiting maintainer review).
+Status is **Accepted** or **Proposed**.
 
 ## ADR-0001: Target .NET 10
 
 **Status:** Accepted.
-**Context:** The brief says to match Datasync's supported .NET version.
+**Context:** Leeway should match Datasync's supported .NET version.
 **Evidence:** The `CommunityToolkit.Datasync.Client` and `.Server` 10.1.2 nuspecs contain only a `net10.0` dependency group (checked 2026-11-04).
 **Decision:** `net10.0` everywhere, except generators and analyzers, which must be `netstandard2.0` to load in the compiler. SDK pinned in `global.json` at 10.0.403.
 
@@ -20,7 +20,7 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 **Status:** Accepted.
 **Decision:** No other database in samples or tests.
 **Honest limit:** Datasync's own docs warn against SQLite for production services. Passing tests here say nothing about other server databases, so Leeway will state which server providers it has verified, which at first is only this one.
-**Amended by ADR-0019:** MySQL is also allowed, for server-side tests only, at the maintainer's request.
+**Amended by ADR-0019:** MySQL is also allowed, for server-side tests only.
 
 ## ADR-0004: Hybrid logical clocks for last-writer-wins
 
@@ -41,12 +41,12 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 
 ## ADR-0007: Package IDs and repository name
 
-**Status:** Accepted, with a caveat for the maintainer.
+**Status:** Accepted, with caveats.
 **Evidence (2026-11-04):** `api.nuget.org` returns 404 for `Leeway`, `Leeway.Core`, `Leeway.Datasync`, `Leeway.Datasync.Client`, `Leeway.Datasync.Server`, `Leeway.Generators`, `Leeway.Analyzers`, and `Leeway.Simulation`.
 **Caveats:**
 - IDs are free, not reserved. The NuGet profile `Leeway` owns `LeewayUtils` and `DintinctTool`, and an unrelated `LeeWay.Ensure.ControllerAttributes` shares the prefix, so reserving the `Leeway.` prefix may not be possible. Publishing early placeholders is the only sure claim.
 - `github.com/leeway` is a dormant, unrelated user account with no public repos. A repository named `leeway` under a personal account or a new organization is available. `leeway-dotnet` and `leewaydotnet` were free as organization names.
-**Decision:** Package IDs as in the brief. The repository is `JoshBlazer/leeway`. `Leeway.Datasync` stays reserved for a possible metapackage at M6. `Leeway.Simulation` is not packable for now.
+**Decision:** Package IDs use the `Leeway.` prefix. The repository is `JoshBlazer/leeway`. `Leeway.Datasync` stays reserved for a possible metapackage at M6. `Leeway.Simulation` is not packable for now.
 
 ## ADR-0008: Pin transitive packages with security advisories
 
@@ -60,9 +60,9 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 ## ADR-0009: Stay on Verify 32.x, the last MIT release line
 
 **Status:** Accepted.
-**Context:** The brief names Verify. Verify 33 and later are under an Open Source Maintenance Fee EULA, covering releases after 2026-09-01, and fail the build (SC021) unless the build declares sponsorship, a time-limited exemption, or an acknowledged breach. An open source project without revenue is exempt, but must declare this in the build and renew it at least yearly.
+**Context:** The snapshot tests use Verify. Verify 33 and later are under an Open Source Maintenance Fee EULA, covering releases after 2026-09-01, and fail the build (SC021) unless the build declares sponsorship, a time-limited exemption, or an acknowledged breach. An open source project without revenue is exempt, but must declare this in the build and renew it at least yearly.
 **Decision:** Pin `Verify` and `Verify.XunitV3` at 32.0.1, which are MIT.
-**Why not the exemption:** It is a licence declaration the maintainer should make, not a tooling default. It also travels with the repo, and a contributor at a company with revenue could not truthfully rely on it. That matters for a project pitched to .NET teams, and for hard constraint 1.
+**Why not the exemption:** It is a licence declaration to make deliberately, not a tooling default. It also travels with the repo, and a contributor at a company with revenue could not truthfully rely on it. That matters for a project pitched to .NET teams, and for the zero-cost rule.
 **Consequence:** No Verify updates, including fixes, unless this is revisited. The alternative is plain assertions over generated source.
 
 ## ADR-0010: xUnit v3 4.x on Microsoft Testing Platform; drive Avalonia headless directly
@@ -91,8 +91,8 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 
 ## ADR-0012: Carry intent in an append-only operation table, and merge on the server
 
-**Status:** Accepted by the maintainer, 2026-11-04, and built in M3 and M4. It changes an emphasis in the brief.
-**Context:** Brief §5 describes a client-side "field-semantic conflict resolver". M0 found this cannot be sufficient by itself:
+**Status:** Accepted, 2026-11-04, and built in M3 and M4. It changes an emphasis in the original plan.
+**Context:** The original plan described a client-side "field-semantic conflict resolver". M0 found this cannot be sufficient by itself:
 - A resolver's merged write is unconditional, so a concurrent update is silently lost (C09, C10). For a counter or escrow balance, this is precisely the failure Leeway exists to prevent.
 - A resolver sees only two row states. A PN-counter or OR-set needs operations or per-device state, and compaction removes them (C07).
 - Retries are inherent (C12, C13, C24, C25), and whole-row replace is not idempotent. Under Datasync's default, a poor signal alone can strand a device in a conflict with itself (C25).
@@ -103,13 +103,13 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 3. Entity rows are read-only projections from the client's point of view. They are pulled, and never written through the queue, so they cannot conflict or block pulls (C06). The client overlays its unacknowledged ops (C17).
 4. A client `IConflictResolver` remains for the op table and for plain whole-row entities. Where a merge must happen on a whole-row write, it uses the compare-and-swap rebase (C11).
 
-**Fit with the brief:** Rides on Datasync's transport, needs no fork, and meets M4's exit check ("merge per field instead of whole-row wins"). The difference from the brief is that the merge is authoritative on the server, while the client computes the same merge only for its local view.
+**Fit with the original plan:** Rides on Datasync's transport, needs no fork, and meets M4's exit check ("merge per field instead of whole-row wins"). The difference is that the merge is authoritative on the server, while the client computes the same merge only for its local view.
 **Alternatives:** A resolver alone is unsafe as above. Controller-level merge of whole rows (S04) cannot recover intent. A custom endpoint breaks the "no custom transport" non-goal.
 **Costs:** Op table growth, plus two tables per concept. Apps can no longer simply edit an entity and call `SaveChanges`: the generated API must make that feel natural.
 
 ## ADR-0013: Server stamps strictly increasing UpdatedAt
 
-**Status:** Accepted by the maintainer, 2026-11-04, and built in M3. Goes with ADR-0012.
+**Status:** Accepted, 2026-11-04, and built in M3. Goes with ADR-0012.
 **Context:** The pull filter is `updatedAt gt <token>`, and SQLite stores `UpdatedAt` in milliseconds, so a later commit in the token's millisecond is never delivered (C19). That breaks simulator property 2 (convergence) with no error anywhere.
 **Decision:** Leeway's server repository stamps `max(now, lastStamp + 1ms)` inside the write transaction. SQLite's single writer makes this sufficient.
 **Honest limit:** This relies on commit order matching stamp order. On SQLite, the single writer gives that. On MySQL, ADR-0019's row lock does. Any other database needs its own answer.
@@ -124,7 +124,7 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 ## ADR-0015: Read attributes by reflection only as a fallback, and store sets as JSON text
 
 **Status:** Accepted. The stopgap parts were reviewed in M5: the generator now produces the schema and a typed API, with reflection as a fallback. Sets remain JSON text.
-**Context:** The brief's sketch has `ISet<string> Flags` and `zone.TrySpendAsync(...)`. M4 comes before the generator.
+**Context:** The original API sketch has `ISet<string> Flags` and `zone.TrySpendAsync(...)`. M4 comes before the generator.
 **Decision:** `MergeSchema` reads the attributes by reflection. An `[AddWinsSet]` property is a `string` holding a JSON array. Spends and edits go through `LeewayClient`, as in `client.TrySpendAsync<Zone>("north", z => z.RemainingCapacity, 1)`.
 **M5 result:** `ISet<string>` was tried. EF Core refuses it without a value converter (`HashSet<string> cannot be used as a primitive collection`), and OData would still need testing beyond that. For little gain, it stays a JSON string, and LEE003 requires one.
 **Consequence:** The API differs from the sketch: `client.TrySpendRemainingCapacityAsync("north", 1)`, because an entity does not hold a client. Reflection-based JSON still rules out NativeAOT.
@@ -151,7 +151,7 @@ Status is **Accepted** or **Proposed** (awaiting maintainer review).
 
 ## ADR-0019: Test the server on MySQL too, for concurrent writers
 
-**Status:** Accepted, at the maintainer's request. It relaxes hard constraint 4 for server-side tests only. Samples and devices stay on SQLite.
+**Status:** Accepted. It relaxes the SQLite-only rule for server-side tests only. Samples and devices stay on SQLite.
 **Context:** Datasync advises against SQLite for production servers, and SQLite has one writer, so it could never show what happens with several server processes.
 **Decision:**
 - With `LEEWAY_TEST_MYSQL` set, the server side of every end-to-end test runs on MySQL, and CI has a job for this. The probes stay on SQLite.

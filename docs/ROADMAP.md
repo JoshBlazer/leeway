@@ -1,6 +1,6 @@
 # Roadmap
 
-Each milestone ends with an exit check, `docs/walkthroughs/mN.md`, and a review stop. CI must be green before a milestone counts as done.
+Each milestone ends with an exit check, `docs/walkthroughs/mN.md`. CI must be green before a milestone counts as done.
 
 | ID | Milestone | Exit check | State |
 |---|---|---|---|

@@ -8,10 +8,10 @@ For where things stand, read `docs/PROGRESS.md` and `docs/ROADMAP.md`.
 - **Design notes before code** for hard modules (escrow protocol, HLC, merge semantics, simulator, generator), with signatures and failing tests first.
 - **Decisions go in `docs/DECISIONS.md`.** Each new runtime dependency needs an entry. Raise anything irreversible before doing it.
 - **Honest limits:** document what cannot be guaranteed offline as prominently as what can.
-- **Hard constraints:** zero cost (check licences, see ADR-0009); extend, do not fork, Datasync; SQLite in samples and on devices, with MySQL allowed for server tests only (ADR-0019); MIT.
+- **Project rules:** zero cost (check licences, see ADR-0009); extend, do not fork, Datasync; SQLite in samples and on devices, with MySQL allowed for server tests only (ADR-0019); MIT.
 - Core logic stays pure and fully tested before integration. `Leeway.Core` has no Datasync dependency.
 - Small conventional commits. Record progress in `docs/PROGRESS.md`.
-- Publishing packages needs the maintainer's approval.
+- Publishing packages needs approval.
 
 ## Commands
 
